@@ -320,8 +320,8 @@ func init() {
 
 	archs = append(archs, arch{
 		name:            "Wasm32",
-		pkg:             "cmd/internal/obj/wasm",
-		genfile:         "../../wasm/ssa.go",
+		pkg:             "cmd/internal/obj/wasm32",
+		genfile:         "../../wasm32/ssa.go",
 		ops:             Wasm32Ops,
 		blocks:          nil,
 		regnames:        regNamesWasm,

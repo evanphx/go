@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package wasm
+package wasm32
 
 import (
 	"cmd/compile/internal/base"
@@ -13,7 +13,8 @@ import (
 	"cmd/compile/internal/ssagen"
 	"cmd/compile/internal/types"
 	"cmd/internal/obj"
-	"cmd/internal/obj/wasm"
+	"cmd/internal/obj/wasm32"
+	"fmt"
 	"internal/buildcfg"
 )
 
@@ -131,8 +132,8 @@ import (
 */
 
 func Init(arch *ssagen.ArchInfo) {
-	arch.LinkArch = &wasm.Linkwasm
-	arch.REGSP = wasm.REG_SP
+	arch.LinkArch = &wasm32.Linkwasm
+	arch.REGSP = wasm32.REG_SP
 	arch.MAXWIDTH = 1 << 50
 
 	arch.ZeroRange = zeroRange
@@ -152,16 +153,16 @@ func zeroRange(pp *objw.Progs, p *obj.Prog, off, cnt int64, state *uint32) *obj.
 	}
 
 	for i := int64(0); i < cnt; i += 8 {
-		p = pp.Append(p, wasm.AGet, obj.TYPE_REG, wasm.REG_SP, 0, 0, 0, 0)
-		p = pp.Append(p, wasm.AI64Const, obj.TYPE_CONST, 0, 0, 0, 0, 0)
-		p = pp.Append(p, wasm.AI64Store, 0, 0, 0, obj.TYPE_CONST, 0, off+i)
+		p = pp.Append(p, wasm32.AGet, obj.TYPE_REG, wasm32.REG_SP, 0, 0, 0, 0)
+		p = pp.Append(p, wasm32.AI64Const, obj.TYPE_CONST, 0, 0, 0, 0, 0)
+		p = pp.Append(p, wasm32.AI64Store, 0, 0, 0, obj.TYPE_CONST, 0, off+i)
 	}
 
 	return p
 }
 
 func ginsnop(pp *objw.Progs) *obj.Prog {
-	return pp.Prog(wasm.ANop)
+	return pp.Prog(wasm32.ANop)
 }
 
 func ssaMarkMoves(s *ssagen.State, b *ssa.Block) {
@@ -179,22 +180,22 @@ func ssaGenBlock(s *ssagen.State, b, next *ssa.Block) {
 		case b.Succs[0].Block():
 			// if false, jump to b.Succs[1]
 			getValue32(s, b.Controls[0])
-			s.Prog(wasm.AI32Eqz)
-			s.Prog(wasm.AIf)
+			s.Prog(wasm32.AI32Eqz)
+			s.Prog(wasm32.AIf)
 			s.Br(obj.AJMP, b.Succs[1].Block())
-			s.Prog(wasm.AEnd)
+			s.Prog(wasm32.AEnd)
 		case b.Succs[1].Block():
 			// if true, jump to b.Succs[0]
 			getValue32(s, b.Controls[0])
-			s.Prog(wasm.AIf)
+			s.Prog(wasm32.AIf)
 			s.Br(obj.AJMP, b.Succs[0].Block())
-			s.Prog(wasm.AEnd)
+			s.Prog(wasm32.AEnd)
 		default:
 			// if true, jump to b.Succs[0], else jump to b.Succs[1]
 			getValue32(s, b.Controls[0])
-			s.Prog(wasm.AIf)
+			s.Prog(wasm32.AIf)
 			s.Br(obj.AJMP, b.Succs[0].Block())
-			s.Prog(wasm.AEnd)
+			s.Prog(wasm32.AEnd)
 			s.Br(obj.AJMP, b.Succs[1].Block())
 		}
 
@@ -204,13 +205,13 @@ func ssaGenBlock(s *ssagen.State, b, next *ssa.Block) {
 	case ssa.BlockExit, ssa.BlockRetJmp:
 
 	case ssa.BlockDefer:
-		p := s.Prog(wasm.AGet)
-		p.From = obj.Addr{Type: obj.TYPE_REG, Reg: wasm.REG_RET0}
-		s.Prog(wasm.AI64Eqz)
-		s.Prog(wasm.AI32Eqz)
-		s.Prog(wasm.AIf)
+		p := s.Prog(wasm32.AGet)
+		p.From = obj.Addr{Type: obj.TYPE_REG, Reg: wasm32.REG_RET0}
+		s.Prog(wasm32.AI64Eqz)
+		s.Prog(wasm32.AI32Eqz)
+		s.Prog(wasm32.AIf)
 		s.Br(obj.AJMP, b.Succs[1].Block())
-		s.Prog(wasm.AEnd)
+		s.Prog(wasm32.AEnd)
 		if next != b.Succs[0].Block() {
 			s.Br(obj.AJMP, b.Succs[0].Block())
 		}
@@ -220,10 +221,10 @@ func ssaGenBlock(s *ssagen.State, b, next *ssa.Block) {
 	}
 
 	// Entry point for the next block. Used by the JMP in goToBlock.
-	s.Prog(wasm.ARESUMEPOINT)
+	s.Prog(wasm32.ARESUMEPOINT)
 
 	if s.OnWasmStackSkipped != 0 {
-		panic("wasm: bad stack")
+		panic(fmt.Sprintf("wasm: bad stack: %d", s.OnWasmStackSkipped))
 	}
 }
 
@@ -237,11 +238,11 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 			// _func.deferreturn. Hence, the call to
 			// deferreturn must itself be a resumption
 			// point so it gets a target PC.
-			s.Prog(wasm.ARESUMEPOINT)
+			s.Prog(wasm32.ARESUMEPOINT)
 		}
 		if v.Op == ssa.OpWasm32LoweredClosureCall {
 			getValue64(s, v.Args[1])
-			setReg(s, wasm.REG_CTXT)
+			setReg(s, wasm32.REG_CTXT)
 		}
 		if call, ok := v.Aux.(*ssa.AuxCall); ok && call.Fn != nil {
 			sym := call.Fn
@@ -262,21 +263,21 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
 		i32Const(s, int32(v.AuxInt))
-		s.Prog(wasm.AMemoryCopy)
+		s.Prog(wasm32.AMemoryCopy)
 
 	case ssa.OpWasm32LoweredZero:
 		getValue32(s, v.Args[0])
 		i32Const(s, 0)
 		i32Const(s, int32(v.AuxInt))
-		s.Prog(wasm.AMemoryFill)
+		s.Prog(wasm32.AMemoryFill)
 
 	case ssa.OpWasm32LoweredNilCheck:
 		getValue64(s, v.Args[0])
-		s.Prog(wasm.AI64Eqz)
-		s.Prog(wasm.AIf)
-		p := s.Prog(wasm.ACALLNORESUME)
+		s.Prog(wasm32.AI64Eqz)
+		s.Prog(wasm32.AIf)
+		p := s.Prog(wasm32.ACALLNORESUME)
 		p.To = obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: ir.Syms.SigPanic}
-		s.Prog(wasm.AEnd)
+		s.Prog(wasm32.AEnd)
 		if logopt.Enabled() {
 			logopt.LogOpt(v.Pos, "nilcheck", "genssa", v.Block.Func.Name)
 		}
@@ -285,7 +286,7 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 		}
 
 	case ssa.OpWasm32LoweredWB:
-		p := s.Prog(wasm.ACall)
+		p := s.Prog(wasm32.ACall)
 		// AuxInt encodes how many buffer entries we need.
 		p.To = obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: ir.Syms.GCWriteBarrier[v.AuxInt-1]}
 		setReg(s, v.Reg0()) // move result from wasm stack to register local
@@ -296,13 +297,20 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 		p := s.Prog(v.Op.Asm())
 		p.To = obj.Addr{Type: obj.TYPE_CONST, Offset: v.AuxInt}
 
-	case ssa.OpWasm32I32Store8, ssa.OpWasm32I32Store16, ssa.OpWasm32I32Store:
+	case ssa.OpWasm32I32Store:
+		//fmt.Printf("i32store: %s (%s)\n", v.Args[0].Op, v.Args[0])
 		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		p := s.Prog(v.Op.Asm())
+		p.To = obj.Addr{Type: obj.TYPE_CONST, Offset: v.AuxInt}
+	case ssa.OpWasm32I32Store8, ssa.OpWasm32I32Store16:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
 		p := s.Prog(v.Op.Asm())
 		p.To = obj.Addr{Type: obj.TYPE_CONST, Offset: v.AuxInt}
 
 	case ssa.OpStoreReg:
-		getReg(s, wasm.REG_SP)
+		getReg(s, wasm32.REG_SP)
 		getValue64(s, v.Args[0])
 		p := s.Prog(storeOp(v.Type))
 		ssagen.AddrAuto(&p.To, v)
@@ -331,10 +339,10 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 	switch v.Op {
 	case ssa.OpWasm32LoweredGetClosurePtr:
-		getReg(s, wasm.REG_CTXT)
+		getReg(s, wasm32.REG_CTXT)
 
 	case ssa.OpWasm32LoweredGetCallerPC:
-		p := s.Prog(wasm.AI64Load)
+		p := s.Prog(wasm32.AI64Load)
 		// Caller PC is stored 8 bytes below first parameter.
 		p.From = obj.Addr{
 			Type:   obj.TYPE_MEM,
@@ -343,12 +351,12 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 		}
 
 	case ssa.OpWasm32LoweredGetCallerSP:
-		p := s.Prog(wasm.AGet)
+		p := s.Prog(wasm32.AGet)
 		// Caller SP is the address of the first parameter.
 		p.From = obj.Addr{
 			Type:   obj.TYPE_ADDR,
 			Name:   obj.NAME_PARAM,
-			Reg:    wasm.REG_SP,
+			Reg:    wasm32.REG_SP,
 			Offset: 0,
 		}
 
@@ -356,10 +364,10 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 		if v.Aux == nil { // address of off(SP), no symbol
 			getValue64(s, v.Args[0])
 			i64Const(s, v.AuxInt)
-			s.Prog(wasm.AI64Add)
+			s.Prog(wasm32.AI64Add)
 			break
 		}
-		p := s.Prog(wasm.AGet)
+		p := s.Prog(wasm32.AGet)
 		p.From.Type = obj.TYPE_ADDR
 		switch v.Aux.(type) {
 		case *obj.LSym:
@@ -416,7 +424,7 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 		getValue64(s, v.Args[0])
 		s.Prog(v.Op.Asm())
 		if extend {
-			s.Prog(wasm.AI64ExtendI32U)
+			s.Prog(wasm32.AI64ExtendI32U)
 		}
 
 	case ssa.OpWasm32I32Eqz:
@@ -435,7 +443,7 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 		getValue64(s, v.Args[1])
 		s.Prog(v.Op.Asm())
 		if extend {
-			s.Prog(wasm.AI64ExtendI32U)
+			s.Prog(wasm32.AI64ExtendI32U)
 		}
 
 	case ssa.OpWasm32I32Add, ssa.OpWasm32I32Sub, ssa.OpWasm32I32Mul, ssa.OpWasm32I32DivU, ssa.OpWasm32I32RemS, ssa.OpWasm32I32RemU, ssa.OpWasm32I32And, ssa.OpWasm32I32Or, ssa.OpWasm32I32Xor, ssa.OpWasm32I32Shl, ssa.OpWasm32I32ShrS, ssa.OpWasm32I32ShrU, ssa.OpWasm32I32Rotl,
@@ -455,22 +463,22 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 		getValue32(s, v.Args[1])
 		if v.Type.Size() == 8 {
 			// Division of int64 needs helper function wasmDiv to handle the MinInt64 / -1 case.
-			p := s.Prog(wasm.ACall)
+			p := s.Prog(wasm32.ACall)
 			p.To = obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: ir.Syms.WasmDiv}
 			break
 		}
-		s.Prog(wasm.AI32DivS)
+		s.Prog(wasm32.AI32DivS)
 
 	case ssa.OpWasm32I64DivS:
 		getValue64(s, v.Args[0])
 		getValue64(s, v.Args[1])
 		if v.Type.Size() == 8 {
 			// Division of int64 needs helper function wasmDiv to handle the MinInt64 / -1 case.
-			p := s.Prog(wasm.ACall)
+			p := s.Prog(wasm32.ACall)
 			p.To = obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: ir.Syms.WasmDiv}
 			break
 		}
-		s.Prog(wasm.AI64DivS)
+		s.Prog(wasm32.AI64DivS)
 
 	case ssa.OpWasm32I32TruncSatF32S, ssa.OpWasm32I32TruncSatF64S:
 		getValue32(s, v.Args[0])
@@ -478,9 +486,9 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 			s.Prog(v.Op.Asm())
 		} else {
 			if v.Op == ssa.OpWasm32I32TruncSatF32S {
-				s.Prog(wasm.AF64PromoteF32)
+				s.Prog(wasm32.AF64PromoteF32)
 			}
-			p := s.Prog(wasm.ACall)
+			p := s.Prog(wasm32.ACall)
 			p.To = obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: ir.Syms.WasmTruncS}
 		}
 
@@ -490,9 +498,9 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 			s.Prog(v.Op.Asm())
 		} else {
 			if v.Op == ssa.OpWasm32I64TruncSatF32S {
-				s.Prog(wasm.AF64PromoteF32)
+				s.Prog(wasm32.AF64PromoteF32)
 			}
-			p := s.Prog(wasm.ACall)
+			p := s.Prog(wasm32.ACall)
 			p.To = obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: ir.Syms.WasmTruncS}
 		}
 
@@ -502,9 +510,9 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 			s.Prog(v.Op.Asm())
 		} else {
 			if v.Op == ssa.OpWasm32I32TruncSatF32U {
-				s.Prog(wasm.AF64PromoteF32)
+				s.Prog(wasm32.AF64PromoteF32)
 			}
-			p := s.Prog(wasm.ACall)
+			p := s.Prog(wasm32.ACall)
 			p.To = obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: ir.Syms.WasmTruncU}
 		}
 
@@ -514,9 +522,9 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 			s.Prog(v.Op.Asm())
 		} else {
 			if v.Op == ssa.OpWasm32I64TruncSatF32U {
-				s.Prog(wasm.AF64PromoteF32)
+				s.Prog(wasm32.AF64PromoteF32)
 			}
-			p := s.Prog(wasm.ACall)
+			p := s.Prog(wasm32.ACall)
 			p.To = obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: ir.Syms.WasmTruncU}
 		}
 
@@ -569,61 +577,63 @@ func isCmp(v *ssa.Value) bool {
 func getValue32(s *ssagen.State, v *ssa.Value) {
 	if v.OnWasmStack {
 		s.OnWasmStackSkipped--
+		//fmt.Printf("s< %s\n", v.Op)
 		ssaGenValueOnStack(s, v, false)
 		if !isCmp(v) {
-			s.Prog(wasm.AI32WrapI64)
+			s.Prog(wasm32.AI32WrapI64)
 		}
 		return
 	}
 
 	reg := v.Reg()
 	getReg(s, reg)
-	if reg != wasm.REG_SP {
-		s.Prog(wasm.AI32WrapI64)
+	if reg != wasm32.REG_SP {
+		s.Prog(wasm32.AI32WrapI64)
 	}
 }
 
 func getValue64(s *ssagen.State, v *ssa.Value) {
 	if v.OnWasmStack {
 		s.OnWasmStackSkipped--
+		//fmt.Printf("s< %s\n", v.Op)
 		ssaGenValueOnStack(s, v, true)
 		return
 	}
 
 	reg := v.Reg()
 	getReg(s, reg)
-	if reg == wasm.REG_SP {
-		s.Prog(wasm.AI64ExtendI32U)
+	if reg == wasm32.REG_SP {
+		s.Prog(wasm32.AI64ExtendI32U)
 	}
 }
 
 func i32Const(s *ssagen.State, val int32) {
-	p := s.Prog(wasm.AI32Const)
+	p := s.Prog(wasm32.AI32Const)
 	p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: int64(val)}
 }
 
 func i64Const(s *ssagen.State, val int64) {
-	p := s.Prog(wasm.AI64Const)
+	p := s.Prog(wasm32.AI64Const)
 	p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: val}
 }
 
 func f32Const(s *ssagen.State, val float64) {
-	p := s.Prog(wasm.AF32Const)
+	p := s.Prog(wasm32.AF32Const)
 	p.From = obj.Addr{Type: obj.TYPE_FCONST, Val: val}
 }
 
 func f64Const(s *ssagen.State, val float64) {
-	p := s.Prog(wasm.AF64Const)
+	p := s.Prog(wasm32.AF64Const)
 	p.From = obj.Addr{Type: obj.TYPE_FCONST, Val: val}
 }
 
 func getReg(s *ssagen.State, reg int16) {
-	p := s.Prog(wasm.AGet)
+	p := s.Prog(wasm32.AGet)
 	p.From = obj.Addr{Type: obj.TYPE_REG, Reg: reg}
 }
 
 func setReg(s *ssagen.State, reg int16) {
-	p := s.Prog(wasm.ASet)
+	p := s.Prog(wasm32.ASet)
 	p.To = obj.Addr{Type: obj.TYPE_REG, Reg: reg}
 }
 
@@ -631,9 +641,9 @@ func loadOp(t *types.Type) obj.As {
 	if t.IsFloat() {
 		switch t.Size() {
 		case 4:
-			return wasm.AF32Load
+			return wasm32.AF32Load
 		case 8:
-			return wasm.AF64Load
+			return wasm32.AF64Load
 		default:
 			panic("bad load type")
 		}
@@ -642,21 +652,21 @@ func loadOp(t *types.Type) obj.As {
 	switch t.Size() {
 	case 1:
 		if t.IsSigned() {
-			return wasm.AI64Load8S
+			return wasm32.AI64Load8S
 		}
-		return wasm.AI64Load8U
+		return wasm32.AI64Load8U
 	case 2:
 		if t.IsSigned() {
-			return wasm.AI64Load16S
+			return wasm32.AI64Load16S
 		}
-		return wasm.AI64Load16U
+		return wasm32.AI64Load16U
 	case 4:
 		if t.IsSigned() {
-			return wasm.AI64Load32S
+			return wasm32.AI64Load32S
 		}
-		return wasm.AI64Load32U
+		return wasm32.AI64Load32U
 	case 8:
-		return wasm.AI64Load
+		return wasm32.AI64Load
 	default:
 		panic("bad load type")
 	}
@@ -666,9 +676,9 @@ func storeOp(t *types.Type) obj.As {
 	if t.IsFloat() {
 		switch t.Size() {
 		case 4:
-			return wasm.AF32Store
+			return wasm32.AF32Store
 		case 8:
-			return wasm.AF64Store
+			return wasm32.AF64Store
 		default:
 			panic("bad store type")
 		}
@@ -676,13 +686,13 @@ func storeOp(t *types.Type) obj.As {
 
 	switch t.Size() {
 	case 1:
-		return wasm.AI64Store8
+		return wasm32.AI64Store8
 	case 2:
-		return wasm.AI64Store16
+		return wasm32.AI64Store16
 	case 4:
-		return wasm.AI64Store32
+		return wasm32.AI64Store32
 	case 8:
-		return wasm.AI64Store
+		return wasm32.AI64Store
 	default:
 		panic("bad store type")
 	}

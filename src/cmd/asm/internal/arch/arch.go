@@ -81,6 +81,8 @@ func Set(GOARCH string, shared bool) *Arch {
 		return archS390x()
 	case "wasm":
 		return archWasm()
+	case "wasm32":
+		return archWasm32()
 	}
 	return nil
 }
@@ -739,6 +741,27 @@ func archS390x() *Arch {
 }
 
 func archWasm() *Arch {
+	instructions := make(map[string]obj.As)
+	for i, s := range obj.Anames {
+		instructions[s] = obj.As(i)
+	}
+	for i, s := range wasm.Anames {
+		if obj.As(i) >= obj.A_ARCHSPECIFIC {
+			instructions[s] = obj.As(i) + obj.ABaseWasm
+		}
+	}
+
+	return &Arch{
+		LinkArch:       &wasm.Linkwasm,
+		Instructions:   instructions,
+		Register:       wasm.Register,
+		RegisterPrefix: nil,
+		RegisterNumber: nilRegisterNumber,
+		IsJump:         jumpWasm,
+	}
+}
+
+func archWasm32() *Arch {
 	instructions := make(map[string]obj.As)
 	for i, s := range obj.Anames {
 		instructions[s] = obj.As(i)
