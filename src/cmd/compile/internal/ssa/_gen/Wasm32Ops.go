@@ -95,6 +95,7 @@ func init() {
 		// The "registers", which are actually local variables, can get clobbered
 		// if we're switching goroutines, because it unwinds the WebAssembly stack.
 		callerSave = gp | fp32 | fp64 | buildReg("g")
+		gponly     = []regMask{gp}
 	)
 
 	// Common regInfo
@@ -102,6 +103,9 @@ func init() {
 		gp01      = regInfo{inputs: nil, outputs: []regMask{gp}}
 		gp11      = regInfo{inputs: []regMask{gpsp}, outputs: []regMask{gp}}
 		gp21      = regInfo{inputs: []regMask{gpsp, gpsp}, outputs: []regMask{gp}}
+		gp22      = regInfo{inputs: []regMask{gpsp, gpsp}, outputs: []regMask{gp, gp}}
+		gp21carry = regInfo{inputs: []regMask{gpsp, gpsp}, outputs: []regMask{gp, 0}}
+		gp2carry1 = regInfo{inputs: []regMask{gpsp, gpsp}, outputs: gponly}
 		gp31      = regInfo{inputs: []regMask{gpsp, gpsp, gpsp}, outputs: []regMask{gp}}
 		fp32_01   = regInfo{inputs: nil, outputs: []regMask{fp32}}
 		fp32_11   = regInfo{inputs: []regMask{fp32}, outputs: []regMask{fp32}}
@@ -143,6 +147,10 @@ func init() {
 		//
 		// TODO(neelance): LoweredConvert should not be necessary any more, since OpConvert does not need to be lowered any more (CL 108496).
 		{name: "LoweredConvert", argLength: 2, reg: regInfo{inputs: []regMask{gp}, outputs: []regMask{gp}}},
+
+		{name: "LoweredMul32uhilo", argLength: 2, reg: gp22},
+		{name: "LoweredAdd32withcarry", argLength: 3, reg: gp2carry1, commutative: true},
+		{name: "LoweredAdd32carry", argLength: 2, reg: gp21carry, commutative: true},
 
 		// The following are native WebAssembly instructions, see https://webassembly.github.io/spec/core/syntax/instructions.html
 

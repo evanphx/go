@@ -866,6 +866,9 @@ func (n *InterfaceSwitchStmt) doChildren(do func(Node) bool) bool {
 	if n.RuntimeType != nil && do(n.RuntimeType) {
 		return true
 	}
+	if n.Hash != nil && do(n.Hash) {
+		return true
+	}
 	return false
 }
 func (n *InterfaceSwitchStmt) editChildren(edit func(Node) Node) {
@@ -879,6 +882,9 @@ func (n *InterfaceSwitchStmt) editChildren(edit func(Node) Node) {
 	if n.RuntimeType != nil {
 		n.RuntimeType = edit(n.RuntimeType).(Node)
 	}
+	if n.Hash != nil {
+		n.Hash = edit(n.Hash).(Node)
+	}
 }
 func (n *InterfaceSwitchStmt) editChildrenWithHidden(edit func(Node) Node) {
 	editNodes(n.init, edit)
@@ -890,6 +896,9 @@ func (n *InterfaceSwitchStmt) editChildrenWithHidden(edit func(Node) Node) {
 	}
 	if n.RuntimeType != nil {
 		n.RuntimeType = edit(n.RuntimeType).(Node)
+	}
+	if n.Hash != nil {
+		n.Hash = edit(n.Hash).(Node)
 	}
 }
 

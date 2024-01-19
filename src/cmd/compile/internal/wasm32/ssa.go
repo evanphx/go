@@ -382,6 +382,24 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 	case ssa.OpWasm32LoweredConvert:
 		getValue64(s, v.Args[0])
 
+	case ssa.OpWasm32LoweredMul32uhilo:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		s.Prog(wasm32.ANop)
+		base.WarnfAt(v.Pos, "noop for mul32uhilo")
+
+	case ssa.OpWasm32LoweredAdd32withcarry:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		s.Prog(wasm32.ANop)
+		base.WarnfAt(v.Pos, "noop for mul32uhilo")
+
+	case ssa.OpWasm32LoweredAdd32carry:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		s.Prog(wasm32.ANop)
+		base.WarnfAt(v.Pos, "noop for mul32uhilo")
+
 	case ssa.OpWasm32Select:
 		getValue64(s, v.Args[0])
 		getValue64(s, v.Args[1])
