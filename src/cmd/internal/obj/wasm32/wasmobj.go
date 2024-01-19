@@ -1062,7 +1062,11 @@ func assemble(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 
 		case ASet:
 			if p.To.Type != obj.TYPE_REG {
-				panic("bad Set: argument is not a register")
+				if p.To.Type == obj.TYPE_REGREG {
+					fmt.Printf("WARN: using wrong regreg")
+				} else {
+					panic("bad Set: argument is not a register")
+				}
 			}
 			reg := p.To.Reg
 			v := regVars[reg-MINREG]

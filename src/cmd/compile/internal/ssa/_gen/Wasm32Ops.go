@@ -148,9 +148,16 @@ func init() {
 		// TODO(neelance): LoweredConvert should not be necessary any more, since OpConvert does not need to be lowered any more (CL 108496).
 		{name: "LoweredConvert", argLength: 2, reg: regInfo{inputs: []regMask{gp}, outputs: []regMask{gp}}},
 
-		{name: "LoweredMul32uhilo", argLength: 2, reg: gp22},
-		{name: "LoweredAdd32withcarry", argLength: 3, reg: gp2carry1, commutative: true},
-		{name: "LoweredAdd32carry", argLength: 2, reg: gp21carry, commutative: true},
+		{name: "LoweredMul32uhilo", argLength: 2, reg: gp22, wasmForceStack: true},
+		{name: "LoweredAdd32withcarry", argLength: 3, reg: gp2carry1, commutative: true, wasmForceStack: true},
+		{name: "LoweredAdd32carry", argLength: 2, reg: gp21carry, commutative: true, wasmForceStack: true},
+		{name: "LoweredSub32withcarry", argLength: 3, reg: gp2carry1, commutative: true, wasmForceStack: true},
+		{name: "LoweredSub32carry", argLength: 2, reg: gp21carry, commutative: true, wasmForceStack: true},
+
+		// Copied from 386Ops.go
+		{name: "LoweredPanicExtendA", argLength: 4, aux: "Int64", reg: regInfo{inputs: []regMask{gp, gp, gp}}, typ: "Mem", call: true}, // arg0=idxHi, arg1=idxLo, arg2=len, arg3=mem, returns memory. AuxInt contains report code (see PanicExtend in genericOps.go).
+		{name: "LoweredPanicExtendB", argLength: 4, aux: "Int64", reg: regInfo{inputs: []regMask{gp, gp, gp}}, typ: "Mem", call: true}, // arg0=idxHi, arg1=idxLo, arg2=len, arg3=mem, returns memory. AuxInt contains report code (see PanicExtend in genericOps.go).
+		{name: "LoweredPanicExtendC", argLength: 4, aux: "Int64", reg: regInfo{inputs: []regMask{gp, gp, gp}}, typ: "Mem", call: true}, // arg0=idxHi, arg1=idxLo, arg2=len, arg3=mem, returns memory. AuxInt contains report code (see PanicExtend in genericOps.go).
 
 		// The following are native WebAssembly instructions, see https://webassembly.github.io/spec/core/syntax/instructions.html
 

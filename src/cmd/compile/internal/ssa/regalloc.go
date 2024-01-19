@@ -744,7 +744,9 @@ func (s *regAllocState) init(f *Func) {
 			for i := len(b.Values) - 1; i >= 0; i-- {
 				v := b.Values[i]
 				if canLiveOnStack.contains(v.ID) {
-					v.OnWasmStack = true
+					if !opcodeTable[v.Op].wasmForceStack {
+						v.OnWasmStack = true
+					}
 				} else {
 					// Value can not live on stack. Values are not allowed to be reordered, so clear candidate set.
 					canLiveOnStack.clear()
@@ -1459,6 +1461,9 @@ func (s *regAllocState) regalloc(f *Func) {
 			for {
 				freed := false
 				for _, i := range regspec.inputs {
+					if i.idx >= len(args) {
+						panic(fmt.Sprintf("missing argument: %s", v.Op))
+					}
 					if args[i.idx] != nil {
 						continue // already allocated
 					}

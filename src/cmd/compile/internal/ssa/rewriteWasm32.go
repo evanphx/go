@@ -24,7 +24,8 @@ func rewriteValueWasm32(v *Value) bool {
 		v.Op = OpWasm32LoweredAdd32carry
 		return true
 	case OpAdd32withcarry:
-		return rewriteValueWasm32_OpAdd32withcarry(v)
+		v.Op = OpWasm32LoweredAdd32withcarry
+		return true
 	case OpAdd64F:
 		v.Op = OpWasm32F64Add
 		return true
@@ -48,6 +49,8 @@ func rewriteValueWasm32(v *Value) bool {
 	case OpAndB:
 		v.Op = OpWasm32I32And
 		return true
+	case OpBitLen32:
+		return rewriteValueWasm32_OpBitLen32(v)
 	case OpCeil:
 		v.Op = OpWasm32F64Ceil
 		return true
@@ -116,26 +119,18 @@ func rewriteValueWasm32(v *Value) bool {
 	case OpCvt32Uto32F:
 		v.Op = OpWasm32F32ConvertI32U
 		return true
+	case OpCvt32Uto64F:
+		return rewriteValueWasm32_OpCvt32Uto64F(v)
 	case OpCvt32to32F:
 		v.Op = OpWasm32F32ConvertI32S
 		return true
+	case OpCvt32to64F:
+		return rewriteValueWasm32_OpCvt32to64F(v)
 	case OpCvt64Fto32:
 		v.Op = OpWasm32I32TruncSatF64S
 		return true
 	case OpCvt64Fto32F:
 		v.Op = OpWasm32F32DemoteF64
-		return true
-	case OpCvt64Uto32F:
-		v.Op = OpWasm32F32ConvertI64U
-		return true
-	case OpCvt64Uto64F:
-		v.Op = OpWasm32F64ConvertI64U
-		return true
-	case OpCvt64to32F:
-		v.Op = OpWasm32F32ConvertI64S
-		return true
-	case OpCvt64to64F:
-		v.Op = OpWasm32F64ConvertI64S
 		return true
 	case OpCvtBoolToUint8:
 		v.Op = OpCopy
@@ -363,6 +358,8 @@ func rewriteValueWasm32(v *Value) bool {
 	case OpOrB:
 		v.Op = OpWasm32I32Or
 		return true
+	case OpPanicExtend:
+		return rewriteValueWasm32_OpPanicExtend(v)
 	case OpPopCount16:
 		return rewriteValueWasm32_OpPopCount16(v)
 	case OpPopCount32:
@@ -447,6 +444,8 @@ func rewriteValueWasm32(v *Value) bool {
 		return rewriteValueWasm32_OpSignExt8to32(v)
 	case OpSignExt8to64:
 		return rewriteValueWasm32_OpSignExt8to64(v)
+	case OpSignmask:
+		return rewriteValueWasm32_OpSignmask(v)
 	case OpSlicemask:
 		return rewriteValueWasm32_OpSlicemask(v)
 	case OpSqrt:
@@ -468,6 +467,12 @@ func rewriteValueWasm32(v *Value) bool {
 		return true
 	case OpSub32F:
 		v.Op = OpWasm32F32Sub
+		return true
+	case OpSub32carry:
+		v.Op = OpWasm32LoweredAdd32carry
+		return true
+	case OpSub32withcarry:
+		v.Op = OpWasm32LoweredAdd32withcarry
 		return true
 	case OpSub64F:
 		v.Op = OpWasm32F64Sub
@@ -602,23 +607,10 @@ func rewriteValueWasm32(v *Value) bool {
 		return rewriteValueWasm32_OpZeroExt8to32(v)
 	case OpZeroExt8to64:
 		return rewriteValueWasm32_OpZeroExt8to64(v)
+	case OpZeromask:
+		return rewriteValueWasm32_OpZeromask(v)
 	}
 	return false
-}
-func rewriteValueWasm32_OpAdd32withcarry(v *Value) bool {
-	v_2 := v.Args[2]
-	v_1 := v.Args[1]
-	v_0 := v.Args[0]
-	// match: (Add32withcarry x y flags)
-	// result: (LoweredAdd32withcarry x y flags)
-	for {
-		x := v_0
-		y := v_1
-		flags := v_2
-		v.reset(OpWasm32LoweredAdd32withcarry)
-		v.AddArg3(x, y, flags)
-		return true
-	}
 }
 func rewriteValueWasm32_OpAddr(v *Value) bool {
 	v_0 := v.Args[0]
@@ -631,6 +623,23 @@ func rewriteValueWasm32_OpAddr(v *Value) bool {
 		v.AuxInt = int32ToAuxInt(0)
 		v.Aux = symToAux(sym)
 		v.AddArg(base)
+		return true
+	}
+}
+func rewriteValueWasm32_OpBitLen32(v *Value) bool {
+	v_0 := v.Args[0]
+	b := v.Block
+	typ := &b.Func.Config.Types
+	// match: (BitLen32 x)
+	// result: (I32Sub (I32Const [64]) (I32Clz x))
+	for {
+		x := v_0
+		v.reset(OpWasm32I32Sub)
+		v0 := b.NewValue0(v.Pos, OpWasm32I32Const, typ.Int32)
+		v0.AuxInt = int32ToAuxInt(64)
+		v1 := b.NewValue0(v.Pos, OpWasm32I32Clz, typ.Int32)
+		v1.AddArg(x)
+		v.AddArg2(v0, v1)
 		return true
 	}
 }
@@ -759,6 +768,28 @@ func rewriteValueWasm32_OpCtz8(v *Value) bool {
 		v1.AuxInt = int32ToAuxInt(0x100)
 		v0.AddArg2(x, v1)
 		v.AddArg(v0)
+		return true
+	}
+}
+func rewriteValueWasm32_OpCvt32Uto64F(v *Value) bool {
+	v_0 := v.Args[0]
+	// match: (Cvt32Uto64F x)
+	// result: (F64ConvertI32U x)
+	for {
+		x := v_0
+		v.reset(OpWasm32F64ConvertI32U)
+		v.AddArg(x)
+		return true
+	}
+}
+func rewriteValueWasm32_OpCvt32to64F(v *Value) bool {
+	v_0 := v.Args[0]
+	// match: (Cvt32to64F x)
+	// result: (F64ConvertI32S x)
+	for {
+		x := v_0
+		v.reset(OpWasm32F64ConvertI32S)
+		v.AddArg(x)
 		return true
 	}
 }
@@ -1955,6 +1986,64 @@ func rewriteValueWasm32_OpOffPtr(v *Value) bool {
 		return true
 	}
 }
+func rewriteValueWasm32_OpPanicExtend(v *Value) bool {
+	v_3 := v.Args[3]
+	v_2 := v.Args[2]
+	v_1 := v.Args[1]
+	v_0 := v.Args[0]
+	// match: (PanicExtend [kind] hi lo y mem)
+	// cond: boundsABI(kind) == 0
+	// result: (LoweredPanicExtendA [kind] hi lo y mem)
+	for {
+		kind := auxIntToInt64(v.AuxInt)
+		hi := v_0
+		lo := v_1
+		y := v_2
+		mem := v_3
+		if !(boundsABI(kind) == 0) {
+			break
+		}
+		v.reset(OpWasm32LoweredPanicExtendA)
+		v.AuxInt = int64ToAuxInt(kind)
+		v.AddArg4(hi, lo, y, mem)
+		return true
+	}
+	// match: (PanicExtend [kind] hi lo y mem)
+	// cond: boundsABI(kind) == 1
+	// result: (LoweredPanicExtendB [kind] hi lo y mem)
+	for {
+		kind := auxIntToInt64(v.AuxInt)
+		hi := v_0
+		lo := v_1
+		y := v_2
+		mem := v_3
+		if !(boundsABI(kind) == 1) {
+			break
+		}
+		v.reset(OpWasm32LoweredPanicExtendB)
+		v.AuxInt = int64ToAuxInt(kind)
+		v.AddArg4(hi, lo, y, mem)
+		return true
+	}
+	// match: (PanicExtend [kind] hi lo y mem)
+	// cond: boundsABI(kind) == 2
+	// result: (LoweredPanicExtendC [kind] hi lo y mem)
+	for {
+		kind := auxIntToInt64(v.AuxInt)
+		hi := v_0
+		lo := v_1
+		y := v_2
+		mem := v_3
+		if !(boundsABI(kind) == 2) {
+			break
+		}
+		v.reset(OpWasm32LoweredPanicExtendC)
+		v.AuxInt = int64ToAuxInt(kind)
+		v.AddArg4(hi, lo, y, mem)
+		return true
+	}
+	return false
+}
 func rewriteValueWasm32_OpPopCount16(v *Value) bool {
 	v_0 := v.Args[0]
 	b := v.Block
@@ -2953,6 +3042,21 @@ func rewriteValueWasm32_OpSignExt8to64(v *Value) bool {
 		v1.AuxInt = int64ToAuxInt(56)
 		v0.AddArg2(x, v1)
 		v.AddArg2(v0, v1)
+		return true
+	}
+}
+func rewriteValueWasm32_OpSignmask(v *Value) bool {
+	v_0 := v.Args[0]
+	b := v.Block
+	typ := &b.Func.Config.Types
+	// match: (Signmask x)
+	// result: (I32ShrS x (I32Const [31]))
+	for {
+		x := v_0
+		v.reset(OpWasm32I32ShrS)
+		v0 := b.NewValue0(v.Pos, OpWasm32I32Const, typ.Int32)
+		v0.AuxInt = int32ToAuxInt(31)
+		v.AddArg2(x, v0)
 		return true
 	}
 }
@@ -4610,6 +4714,27 @@ func rewriteValueWasm32_OpZeroExt8to64(v *Value) bool {
 		return true
 	}
 	return false
+}
+func rewriteValueWasm32_OpZeromask(v *Value) bool {
+	v_0 := v.Args[0]
+	b := v.Block
+	typ := &b.Func.Config.Types
+	// match: (Zeromask x)
+	// result: (I32ShrS (I32Sub (I32Shl x (I32Const [1])) x) (I32Const [31]))
+	for {
+		x := v_0
+		v.reset(OpWasm32I32ShrS)
+		v0 := b.NewValue0(v.Pos, OpWasm32I32Sub, typ.Int32)
+		v1 := b.NewValue0(v.Pos, OpWasm32I32Shl, typ.Int32)
+		v2 := b.NewValue0(v.Pos, OpWasm32I32Const, typ.Int32)
+		v2.AuxInt = int32ToAuxInt(1)
+		v1.AddArg2(x, v2)
+		v0.AddArg2(v1, x)
+		v3 := b.NewValue0(v.Pos, OpWasm32I32Const, typ.Int32)
+		v3.AuxInt = int32ToAuxInt(31)
+		v.AddArg2(v0, v3)
+		return true
+	}
 }
 func rewriteBlockWasm32(b *Block) bool {
 	return false

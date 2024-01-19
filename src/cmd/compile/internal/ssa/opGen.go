@@ -2863,6 +2863,11 @@ const (
 	OpWasm32LoweredMul32uhilo
 	OpWasm32LoweredAdd32withcarry
 	OpWasm32LoweredAdd32carry
+	OpWasm32LoweredSub32withcarry
+	OpWasm32LoweredSub32carry
+	OpWasm32LoweredPanicExtendA
+	OpWasm32LoweredPanicExtendB
+	OpWasm32LoweredPanicExtendC
 	OpWasm32Select
 	OpWasm32I64Load8U
 	OpWasm32I64Load8S
@@ -38728,8 +38733,9 @@ var opcodeTable = [...]opInfo{
 		},
 	},
 	{
-		name:   "LoweredMul32uhilo",
-		argLen: 2,
+		name:           "LoweredMul32uhilo",
+		argLen:         2,
+		wasmForceStack: true,
 		reg: regInfo{
 			inputs: []inputInfo{
 				{0, 281474976776191}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 SP
@@ -38742,9 +38748,10 @@ var opcodeTable = [...]opInfo{
 		},
 	},
 	{
-		name:        "LoweredAdd32withcarry",
-		argLen:      3,
-		commutative: true,
+		name:           "LoweredAdd32withcarry",
+		argLen:         3,
+		commutative:    true,
+		wasmForceStack: true,
 		reg: regInfo{
 			inputs: []inputInfo{
 				{0, 281474976776191}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 SP
@@ -38756,9 +38763,10 @@ var opcodeTable = [...]opInfo{
 		},
 	},
 	{
-		name:        "LoweredAdd32carry",
-		argLen:      2,
-		commutative: true,
+		name:           "LoweredAdd32carry",
+		argLen:         2,
+		commutative:    true,
+		wasmForceStack: true,
 		reg: regInfo{
 			inputs: []inputInfo{
 				{0, 281474976776191}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 SP
@@ -38767,6 +38775,76 @@ var opcodeTable = [...]opInfo{
 			outputs: []outputInfo{
 				{1, 0},
 				{0, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+			},
+		},
+	},
+	{
+		name:           "LoweredSub32withcarry",
+		argLen:         3,
+		commutative:    true,
+		wasmForceStack: true,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, 281474976776191}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 SP
+				{1, 281474976776191}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 SP
+			},
+			outputs: []outputInfo{
+				{0, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+			},
+		},
+	},
+	{
+		name:           "LoweredSub32carry",
+		argLen:         2,
+		commutative:    true,
+		wasmForceStack: true,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, 281474976776191}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 SP
+				{1, 281474976776191}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 SP
+			},
+			outputs: []outputInfo{
+				{1, 0},
+				{0, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+			},
+		},
+	},
+	{
+		name:    "LoweredPanicExtendA",
+		auxType: auxInt64,
+		argLen:  4,
+		call:    true,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+				{1, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+				{2, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+			},
+		},
+	},
+	{
+		name:    "LoweredPanicExtendB",
+		auxType: auxInt64,
+		argLen:  4,
+		call:    true,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+				{1, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+				{2, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+			},
+		},
+	},
+	{
+		name:    "LoweredPanicExtendC",
+		auxType: auxInt64,
+		argLen:  4,
+		call:    true,
+		reg: regInfo{
+			inputs: []inputInfo{
+				{0, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+				{1, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
+				{2, 65535}, // R0 R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15
 			},
 		},
 	},

@@ -4,8 +4,10 @@
 
 // Lowering arithmetic
 (Mul32uhilo ...) => (LoweredMul32uhilo ...)
-(Add32withcarry x y flags) => (LoweredAdd32withcarry x y flags)
+(Add32withcarry ...) => (LoweredAdd32withcarry ...)
 (Add32carry ...) => (LoweredAdd32carry ...)
+(Sub32withcarry ...) => (LoweredAdd32withcarry ...)
+(Sub32carry ...) => (LoweredAdd32carry ...)
 
 // (Add64 ...) => (I64Add ...)
 (Add(32|16|8|Ptr) ...) => (I32Add ...)
@@ -21,6 +23,8 @@
 (Mul(32|16|8) ...) => (I32Mul ...)
 
 (Mul(64|32)F ...) => (F(64|32)Mul ...)
+
+(BitLen32 x) => (I32Sub (I32Const [64]) (I32Clz x))
 
 // (Div64 [false] x y) => (I64DivS x y)
 (Div32 [false] x y) => (I32DivS x y)
@@ -57,6 +61,12 @@
 
 // (Com64 x) => (I64Xor x (I64Const [-1]))
 (Com(32|16|8) x) => (I32Xor x (I32Const [-1]))
+
+// This is adapted from this arm rule. Not confident about it:
+// (Zeromask x) => (SRAconst (RSBshiftRL <typ.Int32> x x [1]) [31]) // sign bit of uint32(x)>>1 - x
+(Zeromask x) => (I32ShrS (I32Sub (I32Shl x (I32Const [1])) x) (I32Const [31]))
+(Signmask x) => (I32ShrS x (I32Const [31])) // (SRAconst x [31])
+(Slicemask x) => (I32ShrS (I32Sub (I32Const [0]) x) (I32Const [63]))
 
 (Not ...) => (I32Eqz ...)
 
@@ -98,7 +108,6 @@
 (ZeroExt16to32   x) => (I32And x (I32Const [0xffff]))
 (ZeroExt8to(32|16) x) => (I32And x (I32Const [0xff]))
 
-(Slicemask x) => (I32ShrS (I32Sub (I32Const [0]) x) (I32Const [63]))
 
 // Lowering truncation
 // Because we ignore the high parts, truncates are just copies.
@@ -107,10 +116,10 @@
 (Trunc16to8         ...) => (Copy ...)
 
 // Lowering float <=> int
-// (Cvt32to64F x) => (F64ConvertI64S (SignExt32to64 x))
-(Cvt64to(64|32)F ...) => (F(64|32)ConvertI64S ...)
-// (Cvt32Uto64F x) => (F64ConvertI64U (ZeroExt32to64 x))
-(Cvt64Uto(64|32)F ...) => (F(64|32)ConvertI64U ...)
+(Cvt32to64F x) => (F64ConvertI32S x)
+// (Cvt64to(64|32)F ...) => (F(64|32)ConvertI64S ...)
+(Cvt32Uto64F x) => (F64ConvertI32U x)
+// (Cvt64Uto(64|32)F ...) => (F(64|32)ConvertI64U ...)
 
 (Cvt32to32F ...) => (F32ConvertI32S ...)
 (Cvt32Uto32F ...) => (F32ConvertI32U ...)
@@ -508,3 +517,7 @@
 (I32Load [off] (LoweredAddr {sym} [off2] (SB)) _) && symIsRO(sym) && isU32Bit(int64(off+int32(off2))) => (I32Const [int32(read32(sym, int64(off+int32(off2)), config.ctxt.Arch.ByteOrder))])
 (I32Load16U [off] (LoweredAddr {sym} [off2] (SB)) _) && symIsRO(sym) && isU32Bit(int64(off+int32(off2))) => (I32Const [int32(read16(sym, int64(off+int32(off2)), config.ctxt.Arch.ByteOrder))])
 (I32Load8U [off] (LoweredAddr {sym} [off2] (SB)) _) && symIsRO(sym) && isU32Bit(int64(off+int32(off2))) => (I32Const [int32(read8(sym, int64(off+int32(off2))))])
+
+(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 0 => (LoweredPanicExtendA [kind] hi lo y mem)
+(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 1 => (LoweredPanicExtendB [kind] hi lo y mem)
+(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 2 => (LoweredPanicExtendC [kind] hi lo y mem)

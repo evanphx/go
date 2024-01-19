@@ -16,6 +16,7 @@ import (
 	"cmd/internal/obj/wasm32"
 	"fmt"
 	"internal/buildcfg"
+	"os"
 )
 
 /*
@@ -284,6 +285,15 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 		if base.Debug.Nil != 0 && v.Pos.Line() > 1 { // v.Pos.Line()==1 in generated wrappers
 			base.WarnfAt(v.Pos, "generated nil check")
 		}
+	case ssa.OpWasm32LoweredPanicExtendA, ssa.OpWasm32LoweredPanicExtendB, ssa.OpWasm32LoweredPanicExtendC:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		getValue32(s, v.Args[2])
+		p := s.Prog(obj.ACALL)
+		p.To.Type = obj.TYPE_MEM
+		p.To.Name = obj.NAME_EXTERN
+		p.To.Sym = ssagen.ExtendCheckFunc[v.AuxInt]
+		s.UseArgs(12) // space used in callee args area by assembly stubs
 
 	case ssa.OpWasm32LoweredWB:
 		p := s.Prog(wasm32.ACall)
@@ -315,6 +325,34 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 		p := s.Prog(storeOp(v.Type))
 		ssagen.AddrAuto(&p.To, v)
 
+	case ssa.OpWasm32LoweredAdd32withcarry:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		//getValue32(s, v.Args[2])
+		base.WarnfAt(v.Pos, "noop for add32withcarry")
+
+		setReg(s, v.Reg())
+
+	case ssa.OpWasm32LoweredAdd32carry:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		base.WarnfAt(v.Pos, "noop for add32carry")
+
+		setReg(s, v.Reg0())
+	case ssa.OpWasm32LoweredSub32withcarry:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		//getValue32(s, v.Args[2])
+		base.WarnfAt(v.Pos, "noop for sub32withcarry")
+
+		setReg(s, v.Reg())
+
+	case ssa.OpWasm32LoweredSub32carry:
+		getValue32(s, v.Args[0])
+		getValue32(s, v.Args[1])
+		base.WarnfAt(v.Pos, "noop for sub32carry")
+
+		setReg(s, v.Reg0())
 	case ssa.OpClobber, ssa.OpClobberReg:
 		// TODO: implement for clobberdead experiment. Nop is ok for now.
 
@@ -324,19 +362,35 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 		}
 		if v.OnWasmStack {
 			s.OnWasmStackSkipped++
+			/*
+				if s.FuncInfo().Text.Ctxt.Pkgpath == "runtime/internal/sys" {
+					fmt.Printf("s> %s (%d, %s) %d\n", v.Op, v.Op, v, s.OnWasmStackSkipped)
+					if v.Op.String() == "LoweredAdd32carry" {
+						panic("on ladd32 carry")
+					}
+				}
+			*/
 			// If a Value is marked OnWasmStack, we don't generate the value and store it to a register now.
 			// Instead, we delay the generation to when the value is used and then directly generate it on the WebAssembly stack.
 			return
 		}
-		ssaGenValueOnStack(s, v, true)
+		set := ssaGenValueOnStack(s, v, true)
 		if s.OnWasmStackSkipped != 0 {
-			panic("wasm: bad stack")
+			name := s.FuncInfo().Text.Ctxt.Pkgpath
+			panic(fmt.Sprintf("wasm: bad stack: %d (%s)", s.OnWasmStackSkipped, name))
 		}
-		setReg(s, v.Reg())
+		if set {
+			if !v.HasReg() {
+				fmt.Fprintln(os.Stderr, v.LongString())
+				panic("bad news reg")
+			}
+
+			setReg(s, v.Reg())
+		}
 	}
 }
 
-func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
+func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) bool {
 	switch v.Op {
 	case ssa.OpWasm32LoweredGetClosurePtr:
 		getReg(s, wasm32.REG_CTXT)
@@ -385,21 +439,15 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 	case ssa.OpWasm32LoweredMul32uhilo:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
-		s.Prog(wasm32.ANop)
 		base.WarnfAt(v.Pos, "noop for mul32uhilo")
 
-	case ssa.OpWasm32LoweredAdd32withcarry:
-		getValue32(s, v.Args[0])
-		getValue32(s, v.Args[1])
-		s.Prog(wasm32.ANop)
-		base.WarnfAt(v.Pos, "noop for mul32uhilo")
-
-	case ssa.OpWasm32LoweredAdd32carry:
-		getValue32(s, v.Args[0])
-		getValue32(s, v.Args[1])
-		s.Prog(wasm32.ANop)
-		base.WarnfAt(v.Pos, "noop for mul32uhilo")
-
+		p := s.Prog(wasm32.ASet)
+		p.To = obj.Addr{
+			Type:   obj.TYPE_REGREG,
+			Reg:    v.Reg0(),
+			Offset: int64(v.Reg1()),
+		}
+		return false
 	case ssa.OpWasm32Select:
 		getValue64(s, v.Args[0])
 		getValue64(s, v.Args[1])
@@ -577,8 +625,9 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) {
 
 	default:
 		v.Fatalf("unexpected op: %s", v.Op)
-
 	}
+
+	return true
 }
 
 func isCmp(v *ssa.Value) bool {
@@ -594,8 +643,12 @@ func isCmp(v *ssa.Value) bool {
 
 func getValue32(s *ssagen.State, v *ssa.Value) {
 	if v.OnWasmStack {
+		/*
+			if s.FuncInfo().Text.Ctxt.Pkgpath == "runtime/internal/sys" {
+				fmt.Printf("s< %s %d\n", v.Op, s.OnWasmStackSkipped)
+			}
+		*/
 		s.OnWasmStackSkipped--
-		//fmt.Printf("s< %s\n", v.Op)
 		ssaGenValueOnStack(s, v, false)
 		if !isCmp(v) {
 			s.Prog(wasm32.AI32WrapI64)
@@ -612,8 +665,12 @@ func getValue32(s *ssagen.State, v *ssa.Value) {
 
 func getValue64(s *ssagen.State, v *ssa.Value) {
 	if v.OnWasmStack {
+		/*
+			if s.FuncInfo().Text.Ctxt.Pkgpath == "runtime/internal/sys" {
+				fmt.Printf("s< %s %d\n", v.Op, s.OnWasmStackSkipped)
+			}
+		*/
 		s.OnWasmStackSkipped--
-		//fmt.Printf("s< %s\n", v.Op)
 		ssaGenValueOnStack(s, v, true)
 		return
 	}
