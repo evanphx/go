@@ -15,6 +15,7 @@ import (
 	"cmd/internal/obj/riscv"
 	"cmd/internal/obj/s390x"
 	"cmd/internal/obj/wasm"
+	"cmd/internal/obj/wasm32"
 	"cmd/internal/obj/x86"
 	"fmt"
 	"strings"
@@ -766,16 +767,16 @@ func archWasm32() *Arch {
 	for i, s := range obj.Anames {
 		instructions[s] = obj.As(i)
 	}
-	for i, s := range wasm.Anames {
+	for i, s := range wasm32.Anames {
 		if obj.As(i) >= obj.A_ARCHSPECIFIC {
 			instructions[s] = obj.As(i) + obj.ABaseWasm
 		}
 	}
 
 	return &Arch{
-		LinkArch:       &wasm.Linkwasm,
+		LinkArch:       &wasm32.Linkwasm,
 		Instructions:   instructions,
-		Register:       wasm.Register,
+		Register:       wasm32.Register,
 		RegisterPrefix: nil,
 		RegisterNumber: nilRegisterNumber,
 		IsJump:         jumpWasm,

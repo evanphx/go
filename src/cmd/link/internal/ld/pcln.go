@@ -135,7 +135,7 @@ func computeDeferReturn(ctxt *Link, deferReturnSym, s loader.Sym) uint32 {
 			lastWasmAddr = uint32(r.Add())
 		}
 		if r.Type().IsDirectCall() && (r.Sym() == deferReturnSym || ldr.IsDeferReturnTramp(r.Sym())) {
-			if target.IsWasm() {
+			if target.IsWasm() || target.IsWasm32() {
 				deferreturn = lastWasmAddr - 1
 			} else {
 				// Note: the relocation target is in the call instruction, but

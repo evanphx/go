@@ -10,18 +10,18 @@
 
 TEXT runtime·rt0_go(SB), NOSPLIT|NOFRAME|TOPFRAME, $0
 	// save m->g0 = g0
-	MOVD $runtime·g0(SB), runtime·m0+m_g0(SB)
+	MOVW $runtime·g0(SB), runtime·m0+m_g0(SB)
 	// save m0 to g0->m
-	MOVD $runtime·m0(SB), runtime·g0+g_m(SB)
+	MOVW $runtime·m0(SB), runtime·g0+g_m(SB)
 	// set g to g0
-	MOVD $runtime·g0(SB), g
+	MOVW $runtime·g0(SB), g
 	CALLNORESUME runtime·check(SB)
 #ifdef GOOS_js
 	CALLNORESUME runtime·args(SB)
 #endif
 	CALLNORESUME runtime·osinit(SB)
 	CALLNORESUME runtime·schedinit(SB)
-	MOVD $runtime·mainPC(SB), 0(SP)
+	MOVW $runtime·mainPC(SB), 0(SP)
 	CALLNORESUME runtime·newproc(SB)
 	CALL runtime·mstart(SB) // WebAssembly stack will unwind when switching to another goroutine
 	UNDEF
@@ -30,8 +30,8 @@ TEXT runtime·mstart(SB),NOSPLIT|TOPFRAME,$0
 	CALL	runtime·mstart0(SB)
 	RET // not reached
 
-DATA  runtime·mainPC+0(SB)/8,$runtime·main(SB)
-GLOBL runtime·mainPC(SB),RODATA,$8
+DATA  runtime·mainPC+0(SB)/4,$runtime·main(SB)
+GLOBL runtime·mainPC(SB),RODATA,$4
 
 // func checkASM() bool
 TEXT ·checkASM(SB), NOSPLIT, $0-1
@@ -39,25 +39,25 @@ TEXT ·checkASM(SB), NOSPLIT, $0-1
 	RET
 
 TEXT runtime·gogo(SB), NOSPLIT, $0-8
-	MOVD buf+0(FP), R0
-	MOVD gobuf_g(R0), R1
-	MOVD 0(R1), R2	// make sure g != nil
-	MOVD R1, g
-	MOVD gobuf_sp(R0), SP
+	MOVW buf+0(FP), R0
+	MOVW gobuf_g(R0), R1
+	MOVW 0(R1), R2	// make sure g != nil
+	MOVW R1, g
+	MOVW gobuf_sp(R0), SP
 
 	// Put target PC at -8(SP), wasm_pc_f_loop will pick it up
 	Get SP
 	I32Const $8
 	I32Sub
-	I64Load gobuf_pc(R0)
-	I64Store $0
+	I32Load gobuf_pc(R0)
+	I32Store $0
 
-	MOVD gobuf_ret(R0), RET0
-	MOVD gobuf_ctxt(R0), CTXT
+	MOVW gobuf_ret(R0), RET0
+	MOVW gobuf_ctxt(R0), CTXT
 	// clear to help garbage collector
-	MOVD $0, gobuf_sp(R0)
-	MOVD $0, gobuf_ret(R0)
-	MOVD $0, gobuf_ctxt(R0)
+	MOVW $0, gobuf_sp(R0)
+	MOVW $0, gobuf_ret(R0)
+	MOVW $0, gobuf_ctxt(R0)
 
 	I32Const $1
 	Return
@@ -68,41 +68,39 @@ TEXT runtime·gogo(SB), NOSPLIT, $0-8
 // to keep running g.
 TEXT runtime·mcall(SB), NOSPLIT, $0-8
 	// CTXT = fn
-	MOVD fn+0(FP), CTXT
+	MOVW fn+0(FP), CTXT
 	// R1 = g.m
-	MOVD g_m(g), R1
+	MOVW g_m(g), R1
 	// R2 = g0
-	MOVD m_g0(R1), R2
+	MOVW m_g0(R1), R2
 
 	// save state in g->sched
-	MOVD 0(SP), g_sched+gobuf_pc(g)     // caller's PC
-	MOVD $fn+0(FP), g_sched+gobuf_sp(g) // caller's SP
+	MOVW 0(SP), g_sched+gobuf_pc(g)     // caller's PC
+	MOVW $fn+0(FP), g_sched+gobuf_sp(g) // caller's SP
 
 	// if g == g0 call badmcall
 	Get g
 	Get R2
-	I64Eq
+	I32Eq
 	If
 		JMP runtime·badmcall(SB)
 	End
 
 	// switch to g0's stack
-	I64Load (g_sched+gobuf_sp)(R2)
-	I64Const $8
-	I64Sub
-	I32WrapI64
+	I32Load (g_sched+gobuf_sp)(R2)
+	I32Const $8
+	I32Sub
 	Set SP
 
 	// set arg to current g
-	MOVD g, 0(SP)
+	MOVW g, 0(SP)
 
 	// switch to g0
-	MOVD R2, g
+	MOVW R2, g
 
 	// call fn
 	Get CTXT
-	I32WrapI64
-	I64Load $0
+	I32Load $0
 	CALL
 
 	Get SP
@@ -115,30 +113,29 @@ TEXT runtime·mcall(SB), NOSPLIT, $0-8
 // func systemstack(fn func())
 TEXT runtime·systemstack(SB), NOSPLIT, $0-8
 	// R0 = fn
-	MOVD fn+0(FP), R0
+	MOVW fn+0(FP), R0
 	// R1 = g.m
-	MOVD g_m(g), R1
+	MOVW g_m(g), R1
 	// R2 = g0
-	MOVD m_g0(R1), R2
+	MOVW m_g0(R1), R2
 
 	// if g == g0
 	Get g
 	Get R2
-	I64Eq
+	I32Eq
 	If
 		// no switch:
-		MOVD R0, CTXT
+		MOVW R0, CTXT
 
 		Get CTXT
-		I32WrapI64
-		I64Load $0
+		I32Load $0
 		JMP
 	End
 
 	// if g != m.curg
 	Get g
-	I64Load m_curg(R1)
-	I64Ne
+	I32Load m_curg(R1)
+	I32Ne
 	If
 		CALLNORESUME runtime·badsystemstack(SB)
 		CALLNORESUME runtime·abort(SB)
@@ -148,36 +145,35 @@ TEXT runtime·systemstack(SB), NOSPLIT, $0-8
 
 	// save state in g->sched. Pretend to
 	// be systemstack_switch if the G stack is scanned.
-	MOVD $runtime·systemstack_switch(SB), g_sched+gobuf_pc(g)
+	MOVW $runtime·systemstack_switch(SB), g_sched+gobuf_pc(g)
 
-	MOVD SP, g_sched+gobuf_sp(g)
+	MOVW SP, g_sched+gobuf_sp(g)
 
 	// switch to g0
-	MOVD R2, g
+	MOVW R2, g
 
 	// make it look like mstart called systemstack on g0, to stop traceback
-	I64Load (g_sched+gobuf_sp)(R2)
-	I64Const $8
-	I64Sub
+	I32Load (g_sched+gobuf_sp)(R2)
+	I32Const $8
+	I32Sub
 	Set R3
 
-	MOVD $runtime·mstart(SB), 0(R3)
-	MOVD R3, SP
+	MOVW $runtime·mstart(SB), 0(R3)
+	MOVW R3, SP
 
 	// call fn
-	MOVD R0, CTXT
+	MOVW R0, CTXT
 
 	Get CTXT
-	I32WrapI64
-	I64Load $0
+	I32Load $0
 	CALL
 
 	// switch back to g
-	MOVD g_m(g), R1
-	MOVD m_curg(R1), R2
-	MOVD R2, g
-	MOVD g_sched+gobuf_sp(R2), SP
-	MOVD $0, g_sched+gobuf_sp(R2)
+	MOVW g_m(g), R1
+	MOVW m_curg(R1), R2
+	MOVW R2, g
+	MOVW g_sched+gobuf_sp(R2), SP
+	MOVW $0, g_sched+gobuf_sp(R2)
 	RET
 
 TEXT runtime·systemstack_switch(SB), NOSPLIT, $0-0
@@ -197,7 +193,7 @@ TEXT runtime·memhash64(SB),NOSPLIT|NOFRAME,$0-24
 	JMP	runtime·memhash64Fallback(SB)
 
 TEXT runtime·return0(SB), NOSPLIT, $0-0
-	MOVD $0, RET0
+	MOVW $0, RET0
 	RET
 
 TEXT runtime·asminit(SB), NOSPLIT, $0-0
@@ -215,25 +211,23 @@ TEXT runtime·breakpoint(SB), NOSPLIT, $0-0
 
 // func switchToCrashStack0(fn func())
 TEXT runtime·switchToCrashStack0(SB), NOSPLIT, $0-8
-	MOVD fn+0(FP), CTXT	// context register
-	MOVD	g_m(g), R2	// curm
+	MOVW fn+0(FP), CTXT	// context register
+	MOVW	g_m(g), R2	// curm
 
 	// set g to gcrash
-	MOVD	$runtime·gcrash(SB), g	// g = &gcrash
-	MOVD	R2, g_m(g)	// g.m = curm
-	MOVD	g, m_g0(R2)	// curm.g0 = g
+	MOVW	$runtime·gcrash(SB), g	// g = &gcrash
+	MOVW	R2, g_m(g)	// g.m = curm
+	MOVW	g, m_g0(R2)	// curm.g0 = g
 
 	// switch to crashstack
-	I64Load (g_stack+stack_hi)(g)
-	I64Const $(-4*8)
-	I64Add
-	I32WrapI64
+	I32Load (g_stack+stack_hi)(g)
+	I32Const $(-4*8)
+	I32Add
 	Set SP
 
 	// call target function
 	Get CTXT
-	I32WrapI64
-	I64Load $0
+	I32Load $0
 	CALL
 
 	// should never return
@@ -248,21 +242,21 @@ TEXT runtime·switchToCrashStack0(SB), NOSPLIT, $0-8
 // record an argument size. For that purpose, it has no arguments.
 TEXT runtime·morestack(SB), NOSPLIT, $0-0
 	// R1 = g.m
-	MOVD g_m(g), R1
+	MOVW g_m(g), R1
 
 	// R2 = g0
-	MOVD m_g0(R1), R2
+	MOVW m_g0(R1), R2
 
 	// Set g->sched to context in f.
 	NOP	SP	// tell vet SP changed - stop checking offsets
-	MOVD 0(SP), g_sched+gobuf_pc(g)
-	MOVD $8(SP), g_sched+gobuf_sp(g) // f's SP
-	MOVD CTXT, g_sched+gobuf_ctxt(g)
+	MOVW 0(SP), g_sched+gobuf_pc(g)
+	MOVW $8(SP), g_sched+gobuf_sp(g) // f's SP
+	MOVW CTXT, g_sched+gobuf_ctxt(g)
 
 	// Cannot grow scheduler stack (m->g0).
 	Get g
 	Get R2
-	I64Eq
+	I32Eq
 	If
 		CALLNORESUME runtime·badmorestackg0(SB)
 		CALLNORESUME runtime·abort(SB)
@@ -270,8 +264,8 @@ TEXT runtime·morestack(SB), NOSPLIT, $0-0
 
 	// Cannot grow signal stack (m->gsignal).
 	Get g
-	I64Load m_gsignal(R1)
-	I64Eq
+	I32Load m_gsignal(R1)
+	I32Eq
 	If
 		CALLNORESUME runtime·badmorestackgsignal(SB)
 		CALLNORESUME runtime·abort(SB)
@@ -279,19 +273,19 @@ TEXT runtime·morestack(SB), NOSPLIT, $0-0
 
 	// Called from f.
 	// Set m->morebuf to f's caller.
-	MOVD 8(SP), m_morebuf+gobuf_pc(R1)
-	MOVD $16(SP), m_morebuf+gobuf_sp(R1) // f's caller's SP
-	MOVD g, m_morebuf+gobuf_g(R1)
+	MOVW 8(SP), m_morebuf+gobuf_pc(R1)
+	MOVW $16(SP), m_morebuf+gobuf_sp(R1) // f's caller's SP
+	MOVW g, m_morebuf+gobuf_g(R1)
 
 	// Call newstack on m->g0's stack.
-	MOVD R2, g
-	MOVD g_sched+gobuf_sp(R2), SP
+	MOVW R2, g
+	MOVW g_sched+gobuf_sp(R2), SP
 	CALL runtime·newstack(SB)
 	UNDEF // crash if newstack returns
 
 // morestack but not preserving ctxt.
 TEXT runtime·morestack_noctxt(SB),NOSPLIT,$0
-	MOVD $0, CTXT
+	MOVW $0, CTXT
 	JMP runtime·morestack(SB)
 
 TEXT ·asmcgocall(SB), NOSPLIT, $0-0
@@ -299,15 +293,15 @@ TEXT ·asmcgocall(SB), NOSPLIT, $0-0
 
 #define DISPATCH(NAME, MAXSIZE) \
 	Get R0; \
-	I64Const $MAXSIZE; \
-	I64LeU; \
+	I32Const $MAXSIZE; \
+	I32LeU; \
 	If; \
 		JMP NAME(SB); \
 	End
 
 TEXT ·reflectcall(SB), NOSPLIT, $0-48
-	I64Load fn+8(FP)
-	I64Eqz
+	I32Load fn+8(FP)
+	I32Eqz
 	If
 		CALLNORESUME runtime·sigpanic<ABIInternal>(SB)
 	End
@@ -349,42 +343,38 @@ TEXT NAME(SB), WRAPPER, $MAXSIZE-48; \
 	MOVW stackArgsSize+24(FP), R0; \
 	\
 	Get R0; \
-	I64Eqz; \
+	I32Eqz; \
 	Not; \
 	If; \
 		Get SP; \
-		I64Load stackArgs+16(FP); \
-		I32WrapI64; \
-		I64Load stackArgsSize+24(FP); \
-		I32WrapI64; \
+		I32Load stackArgs+16(FP); \
+		I32Load stackArgsSize+24(FP); \
 		MemoryCopy; \
 	End; \
 	\
-	MOVD f+8(FP), CTXT; \
+	MOVW f+8(FP), CTXT; \
 	Get CTXT; \
-	I32WrapI64; \
-	I64Load $0; \
+	I32Load $0; \
 	CALL; \
 	\
-	I64Load32U stackRetOffset+28(FP); \
+	I32Load stackRetOffset+28(FP); \
 	Set R0; \
 	\
-	MOVD stackArgsType+0(FP), RET0; \
+	MOVW stackArgsType+0(FP), RET0; \
 	\
-	I64Load stackArgs+16(FP); \
+	I32Load stackArgs+16(FP); \
 	Get R0; \
-	I64Add; \
+	I32Add; \
 	Set RET1; \
 	\
 	Get SP; \
-	I64ExtendI32U; \
 	Get R0; \
-	I64Add; \
+	I32Add; \
 	Set RET2; \
 	\
-	I64Load32U stackArgsSize+24(FP); \
+	I32Load stackArgsSize+24(FP); \
 	Get R0; \
-	I64Sub; \
+	I32Sub; \
 	Set RET3; \
 	\
 	CALL callRet<>(SB); \
@@ -396,11 +386,11 @@ TEXT NAME(SB), WRAPPER, $MAXSIZE-48; \
 // arguments in registers.
 TEXT callRet<>(SB), NOSPLIT, $40-0
 	NO_LOCAL_POINTERS
-	MOVD RET0, 0(SP)
-	MOVD RET1, 8(SP)
-	MOVD RET2, 16(SP)
-	MOVD RET3, 24(SP)
-	MOVD $0,   32(SP)
+	MOVW RET0, 0(SP)
+	MOVW RET1, 8(SP)
+	MOVW RET2, 16(SP)
+	MOVW RET3, 24(SP)
+	MOVW $0,   32(SP)
 	CALL runtime·reflectcallmove(SB)
 	RET
 
@@ -451,30 +441,30 @@ TEXT runtime·cgocallback(SB), NOSPLIT, $0-24
 TEXT gcWriteBarrier<>(SB), NOSPLIT, $0
 	Loop
 		// R3 = g.m
-		MOVD g_m(g), R3
+		MOVW g_m(g), R3
 		// R4 = p
-		MOVD m_p(R3), R4
+		MOVW m_p(R3), R4
 		// R5 = wbBuf.next
-		MOVD p_wbBuf+wbBuf_next(R4), R5
+		MOVW p_wbBuf+wbBuf_next(R4), R5
 
 		// Increment wbBuf.next
 		Get R5
 		Get R0
-		I64Add
+		I32Add
 		Set R5
 
 		// Is the buffer full?
 		Get R5
-		I64Load (p_wbBuf+wbBuf_end)(R4)
-		I64LeU
+		I32Load (p_wbBuf+wbBuf_end)(R4)
+		I32LeU
 		If
 			// Commit to the larger buffer.
-			MOVD R5, p_wbBuf+wbBuf_next(R4)
+			MOVW R5, p_wbBuf+wbBuf_next(R4)
 
 			// Make return value (the original next position)
 			Get R5
 			Get R0
-			I64Sub
+			I32Sub
 
 			Return
 		End
@@ -487,35 +477,35 @@ TEXT gcWriteBarrier<>(SB), NOSPLIT, $0
 	End
 
 TEXT runtime·gcWriteBarrier1<ABIInternal>(SB),NOSPLIT,$0
-	I64Const $8
+	I32Const $8
 	Call	gcWriteBarrier<>(SB)
 	Return
 TEXT runtime·gcWriteBarrier2<ABIInternal>(SB),NOSPLIT,$0
-	I64Const $16
+	I32Const $16
 	Call	gcWriteBarrier<>(SB)
 	Return
 TEXT runtime·gcWriteBarrier3<ABIInternal>(SB),NOSPLIT,$0
-	I64Const $24
+	I32Const $24
 	Call	gcWriteBarrier<>(SB)
 	Return
 TEXT runtime·gcWriteBarrier4<ABIInternal>(SB),NOSPLIT,$0
-	I64Const $32
+	I32Const $32
 	Call	gcWriteBarrier<>(SB)
 	Return
 TEXT runtime·gcWriteBarrier5<ABIInternal>(SB),NOSPLIT,$0
-	I64Const $40
+	I32Const $40
 	Call	gcWriteBarrier<>(SB)
 	Return
 TEXT runtime·gcWriteBarrier6<ABIInternal>(SB),NOSPLIT,$0
-	I64Const $48
+	I32Const $48
 	Call	gcWriteBarrier<>(SB)
 	Return
 TEXT runtime·gcWriteBarrier7<ABIInternal>(SB),NOSPLIT,$0
-	I64Const $56
+	I32Const $56
 	Call	gcWriteBarrier<>(SB)
 	Return
 TEXT runtime·gcWriteBarrier8<ABIInternal>(SB),NOSPLIT,$0
-	I64Const $64
+	I32Const $64
 	Call	gcWriteBarrier<>(SB)
 	Return
 

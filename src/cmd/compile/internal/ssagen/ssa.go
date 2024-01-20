@@ -2681,7 +2681,7 @@ func (s *state) conv(n ir.Node, v *ssa.Value, ft, tt *types.Type) *ssa.Value {
 				conv = conv1
 			}
 		}
-		if Arch.LinkArch.Family == sys.ARM64 || Arch.LinkArch.Family == sys.Wasm || Arch.LinkArch.Family == sys.Wasm32 || Arch.LinkArch.Family == sys.S390X || s.softFloat {
+		if Arch.LinkArch.Family == sys.ARM64 || Arch.LinkArch.Family == sys.Wasm || Arch.LinkArch.Family == sys.S390X || s.softFloat {
 			if conv1, ok1 := uint64fpConvOpToSSA[twoTypes{s.concreteEtype(ft), s.concreteEtype(tt)}]; ok1 {
 				conv = conv1
 			}
@@ -4589,17 +4589,17 @@ func InitTables() {
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			return s.newValue1(ssa.OpTrunc, types.Types[types.TFLOAT64], args[0])
 		},
-		sys.ARM64, sys.PPC64, sys.S390X, sys.Wasm, sys.Wasm32)
+		sys.ARM64, sys.PPC64, sys.S390X, sys.Wasm)
 	addF("math", "Ceil",
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			return s.newValue1(ssa.OpCeil, types.Types[types.TFLOAT64], args[0])
 		},
-		sys.ARM64, sys.PPC64, sys.S390X, sys.Wasm, sys.Wasm32)
+		sys.ARM64, sys.PPC64, sys.S390X, sys.Wasm)
 	addF("math", "Floor",
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			return s.newValue1(ssa.OpFloor, types.Types[types.TFLOAT64], args[0])
 		},
-		sys.ARM64, sys.PPC64, sys.S390X, sys.Wasm, sys.Wasm32)
+		sys.ARM64, sys.PPC64, sys.S390X, sys.Wasm)
 	addF("math", "Round",
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			return s.newValue1(ssa.OpRound, types.Types[types.TFLOAT64], args[0])
@@ -4609,17 +4609,17 @@ func InitTables() {
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			return s.newValue1(ssa.OpRoundToEven, types.Types[types.TFLOAT64], args[0])
 		},
-		sys.ARM64, sys.S390X, sys.Wasm, sys.Wasm32)
+		sys.ARM64, sys.S390X, sys.Wasm)
 	addF("math", "Abs",
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			return s.newValue1(ssa.OpAbs, types.Types[types.TFLOAT64], args[0])
 		},
-		sys.ARM64, sys.ARM, sys.PPC64, sys.RISCV64, sys.Wasm, sys.Wasm32, sys.MIPS, sys.MIPS64)
+		sys.ARM64, sys.ARM, sys.PPC64, sys.RISCV64, sys.Wasm, sys.MIPS, sys.MIPS64)
 	addF("math", "Copysign",
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			return s.newValue2(ssa.OpCopysign, types.Types[types.TFLOAT64], args[0], args[1])
 		},
-		sys.PPC64, sys.RISCV64, sys.Wasm, sys.Wasm32)
+		sys.PPC64, sys.RISCV64, sys.Wasm)
 	addF("math", "FMA",
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			return s.newValue3(ssa.OpFMA, types.Types[types.TFLOAT64], args[0], args[1], args[2])

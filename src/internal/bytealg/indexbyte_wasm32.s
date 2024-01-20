@@ -7,46 +7,40 @@
 #include "textflag.h"
 
 TEXT ·IndexByte(SB), NOSPLIT, $0-40
-	I64Load b_base+0(FP)
-	I32WrapI64
+	I32Load b_base+0(FP)
 	I32Load8U c+24(FP)
-	I64Load b_len+8(FP)
-	I32WrapI64
+	I32Load b_len+8(FP)
 	Call memchr<>(SB)
-	I64ExtendI32S
 	Set R0
 
 	Get SP
-	I64Const $-1
+	I32Const $-1
 	Get R0
-	I64Load b_base+0(FP)
-	I64Sub
+	I32Load b_base+0(FP)
+	I32Sub
 	Get R0
-	I64Eqz $0
+	I32Eqz $0
 	Select
-	I64Store ret+32(FP)
+	I32Store ret+32(FP)
 
 	RET
 
 TEXT ·IndexByteString(SB), NOSPLIT, $0-32
 	Get SP
-	I64Load s_base+0(FP)
-	I32WrapI64
+	I32Load s_base+0(FP)
 	I32Load8U c+16(FP)
-	I64Load s_len+8(FP)
-	I32WrapI64
+	I32Load s_len+8(FP)
 	Call memchr<>(SB)
-	I64ExtendI32S
 	Set R0
 
-	I64Const $-1
+	I32Const $-1
 	Get R0
-	I64Load s_base+0(FP)
-	I64Sub
+	I32Load s_base+0(FP)
+	I32Sub
 	Get R0
-	I64Eqz $0
+	I32Eqz $0
 	Select
-	I64Store ret+24(FP)
+	I32Store ret+24(FP)
 
 	RET
 

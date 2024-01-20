@@ -8,22 +8,22 @@
 
 TEXT ·Compare(SB), NOSPLIT, $0-56
 	Get SP
-	I64Load a_base+0(FP)
-	I64Load a_len+8(FP)
-	I64Load b_base+24(FP)
-	I64Load b_len+32(FP)
+	I32Load a_base+0(FP)
+	I32Load a_len+8(FP)
+	I32Load b_base+24(FP)
+	I32Load b_len+32(FP)
 	Call cmpbody<>(SB)
-	I64Store ret+48(FP)
+	I32Store ret+48(FP)
 	RET
 
 TEXT runtime·cmpstring(SB), NOSPLIT, $0-40
 	Get SP
-	I64Load a_base+0(FP)
-	I64Load a_len+8(FP)
-	I64Load b_base+16(FP)
-	I64Load b_len+24(FP)
+	I32Load a_base+0(FP)
+	I32Load a_len+8(FP)
+	I32Load b_base+16(FP)
+	I32Load b_len+24(FP)
 	Call cmpbody<>(SB)
-	I64Store ret+32(FP)
+	I32Store ret+32(FP)
 	RET
 
 // params: a, alen, b, blen
@@ -34,38 +34,34 @@ TEXT cmpbody<>(SB), NOSPLIT, $0-0
 	Get R3
 	Get R1
 	Get R3
-	I64LtU
+	I32LtU
 	Select
 	Set R4
 
 	Get R0
-	I32WrapI64
 	Get R2
-	I32WrapI64
 	Get R4
-	I32WrapI64
 	Call memcmp<>(SB)
-	I64ExtendI32S
 	Tee R5
 
-	I64Eqz
+	I32Eqz
 	If
 		// check length
 		Get R1
 		Get R3
-		I64Sub
+		I32Sub
 		Set R5
 	End
 
-	I64Const $0
-	I64Const $-1
-	I64Const $1
+	I32Const $0
+	I32Const $-1
+	I32Const $1
 	Get R5
-	I64Const $0
-	I64LtS
+	I32Const $0
+	I32LtS
 	Select
 	Get R5
-	I64Eqz
+	I32Eqz
 	Select
 	Return
 

@@ -366,7 +366,7 @@ func NewConfig(arch string, types Types, ctxt *obj.Link, optimize, softfloat boo
 		c.hasGReg = true
 		c.noDuffDevice = true
 		c.useAvg = false
-		c.useHmul = false
+		c.useHmul = true
 	default:
 		ctxt.Diag("arch %s not implemented", arch)
 	}

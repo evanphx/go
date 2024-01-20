@@ -153,6 +153,8 @@ func init() {
 		{name: "LoweredAdd32carry", argLength: 2, reg: gp21carry, commutative: true, wasmForceStack: true},
 		{name: "LoweredSub32withcarry", argLength: 3, reg: gp2carry1, commutative: true, wasmForceStack: true},
 		{name: "LoweredSub32carry", argLength: 2, reg: gp21carry, commutative: true, wasmForceStack: true},
+		{name: "LoweredHighMul", argLength: 2, reg: gp21, commutative: true},  // (arg0 * arg1) >> 32, signed
+		{name: "LoweredHighMulU", argLength: 2, reg: gp21, commutative: true}, // (arg0 * arg1) >> 32, unsigned
 
 		// Copied from 386Ops.go
 		{name: "LoweredPanicExtendA", argLength: 4, aux: "Int64", reg: regInfo{inputs: []regMask{gp, gp, gp}}, typ: "Mem", call: true}, // arg0=idxHi, arg1=idxLo, arg2=len, arg3=mem, returns memory. AuxInt contains report code (see PanicExtend in genericOps.go).

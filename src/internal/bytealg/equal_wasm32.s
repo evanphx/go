@@ -9,21 +9,21 @@
 // memequal(p, q unsafe.Pointer, size uintptr) bool
 TEXT runtime·memequal(SB), NOSPLIT, $0-25
 	Get SP
-	I64Load a+0(FP)
-	I64Load b+8(FP)
-	I64Load size+16(FP)
+	I32Load a+0(FP)
+	I32Load b+8(FP)
+	I32Load size+16(FP)
 	Call memeqbody<>(SB)
-	I64Store8 ret+24(FP)
+	I32Store8 ret+24(FP)
 	RET
 
 // memequal_varlen(a, b unsafe.Pointer) bool
 TEXT runtime·memequal_varlen(SB), NOSPLIT, $0-17
 	Get SP
-	I64Load a+0(FP)
-	I64Load b+8(FP)
-	I64Load 8(CTXT) // compiler stores size at offset 8 in the closure
+	I32Load a+0(FP)
+	I32Load b+8(FP)
+	I32Load 8(CTXT) // compiler stores size at offset 8 in the closure
 	Call memeqbody<>(SB)
-	I64Store8 ret+16(FP)
+	I32Store8 ret+16(FP)
 	RET
 
 // params: a, b, len
@@ -31,46 +31,44 @@ TEXT runtime·memequal_varlen(SB), NOSPLIT, $0-17
 TEXT memeqbody<>(SB), NOSPLIT, $0-0
 	Get R0
 	Get R1
-	I64Eq
+	I32Eq
 	If
-		I64Const $1
+		I32Const $1
 		Return
 	End
 
 loop:
 	Loop
 		Get R2
-		I64Eqz
+		I32Eqz
 		If
-			I64Const $1
+			I32Const $1
 			Return
 		End
 
 		Get R0
-		I32WrapI64
-		I64Load8U $0
+		I32Load8U $0
 		Get R1
-		I32WrapI64
-		I64Load8U $0
-		I64Ne
+		I32Load8U $0
+		I32Ne
 		If
-			I64Const $0
+			I32Const $0
 			Return
 		End
 
 		Get R0
-		I64Const $1
-		I64Add
+		I32Const $1
+		I32Add
 		Set R0
 
 		Get R1
-		I64Const $1
-		I64Add
+		I32Const $1
+		I32Add
 		Set R1
 
 		Get R2
-		I64Const $1
-		I64Sub
+		I32Const $1
+		I32Sub
 		Set R2
 
 		Br loop

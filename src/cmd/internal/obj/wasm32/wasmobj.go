@@ -244,15 +244,12 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 				switch f.Type {
 				case obj.WasmI32:
 					p = appendp(p, AI32Load, constAddr(loadOffset))
-				case obj.WasmI64:
-					p = appendp(p, AI64Load, constAddr(loadOffset))
 				case obj.WasmF32:
 					p = appendp(p, AF32Load, constAddr(loadOffset))
 				case obj.WasmF64:
 					p = appendp(p, AF64Load, constAddr(loadOffset))
 				case obj.WasmPtr:
-					p = appendp(p, AI64Load, constAddr(loadOffset))
-					p = appendp(p, AI32WrapI64)
+					p = appendp(p, AI32Load, constAddr(loadOffset))
 				default:
 					panic("bad param type")
 				}
@@ -277,15 +274,12 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 				switch f.Type {
 				case obj.WasmI32:
 					p = appendp(p, AI32Store, constAddr(storeOffset))
-				case obj.WasmI64:
-					p = appendp(p, AI64Store, constAddr(storeOffset))
 				case obj.WasmF32:
 					p = appendp(p, AF32Store, constAddr(storeOffset))
 				case obj.WasmF64:
 					p = appendp(p, AF64Store, constAddr(storeOffset))
 				case obj.WasmPtr:
-					p = appendp(p, AI64ExtendI32U)
-					p = appendp(p, AI64Store, constAddr(storeOffset))
+					p = appendp(p, AI32Store, constAddr(storeOffset))
 				default:
 					panic("bad result type")
 				}
@@ -336,17 +330,16 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 		p = appendp(p, AMOVD, gpanic, regAddr(REG_R0))
 
 		p = appendp(p, AGet, regAddr(REG_R0))
-		p = appendp(p, AI64Eqz)
+		p = appendp(p, AI32Eqz)
 		p = appendp(p, ANot)
 		p = appendp(p, AIf)
 
 		p = appendp(p, AGet, regAddr(REG_SP))
-		p = appendp(p, AI64ExtendI32U)
-		p = appendp(p, AI64Const, constAddr(framesize+8))
-		p = appendp(p, AI64Add)
-		p = appendp(p, AI64Load, panicargp)
+		p = appendp(p, AI32Const, constAddr(framesize+8))
+		p = appendp(p, AI32Add)
+		p = appendp(p, AI32Load, panicargp)
 
-		p = appendp(p, AI64Eq)
+		p = appendp(p, AI32Eq)
 		p = appendp(p, AIf)
 		p = appendp(p, AMOVD, regAddr(REG_SP), panicargp)
 		p = appendp(p, AEnd)
@@ -477,13 +470,11 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			// small stack: SP <= stackguard
 			// Get SP
 			// Get g
-			// I32WrapI64
 			// I32Load $stackguard0
 			// I32GtU
 
 			p = appendp(p, AGet, regAddr(REG_SP))
 			p = appendp(p, AGet, regAddr(REGG))
-			p = appendp(p, AI32WrapI64)
 			p = appendp(p, AI32Load, constAddr(2*int64(ctxt.Arch.PtrSize))) // G.stackguard0
 			p = appendp(p, AI32LeU)
 		} else {
@@ -491,7 +482,6 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			//              SP <= stackguard+(framesize-StackSmall)
 			// Get SP
 			// Get g
-			// I32WrapI64
 			// I32Load $stackguard0
 			// I32Const $(framesize-StackSmall)
 			// I32Add
@@ -499,7 +489,6 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 
 			p = appendp(p, AGet, regAddr(REG_SP))
 			p = appendp(p, AGet, regAddr(REGG))
-			p = appendp(p, AI32WrapI64)
 			p = appendp(p, AI32Load, constAddr(2*int64(ctxt.Arch.PtrSize))) // G.stackguard0
 			p = appendp(p, AI32Const, constAddr(framesize-abi.StackSmall))
 			p = appendp(p, AI32Add)
@@ -562,7 +551,6 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 
 			case obj.TYPE_NONE:
 				// (target PC is on stack)
-				p = appendp(p, AI32WrapI64)
 				p = appendp(p, AI32Const, constAddr(16)) // only needs PC_F bits (16-31), PC_B bits (0-15) are zero
 				p = appendp(p, AI32ShrU)
 
@@ -599,13 +587,13 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 
 			// write return address to Go stack
 			p = appendp(p, AGet, regAddr(REG_SP))
-			p = appendp(p, AI64Const, obj.Addr{
+			p = appendp(p, AI32Const, obj.Addr{
 				Type:   obj.TYPE_ADDR,
 				Name:   obj.NAME_EXTERN,
 				Sym:    s,           // PC_F
 				Offset: pcAfterCall, // PC_B
 			})
-			p = appendp(p, AI64Store, constAddr(0))
+			p = appendp(p, AI32Store, constAddr(0))
 
 			// low-level WebAssembly call to function
 			switch call.To.Type {
@@ -618,7 +606,6 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 
 			case obj.TYPE_NONE:
 				// (target PC is on stack)
-				p = appendp(p, AI32WrapI64)
 				p = appendp(p, AI32Const, constAddr(16)) // only needs PC_F bits (16-31), PC_B bits (0-15) are zero
 				p = appendp(p, AI32ShrU)
 
@@ -716,32 +703,26 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 
 				switch get.From.Name {
 				case obj.NAME_EXTERN:
-					p = appendp(p, AI64Const, get.From)
+					p = appendp(p, AI32Const, get.From)
 				case obj.NAME_AUTO, obj.NAME_PARAM:
 					p = appendp(p, AGet, regAddr(get.From.Reg))
-					if get.From.Reg == REG_SP {
-						p = appendp(p, AI64ExtendI32U)
-					}
 					if get.From.Offset != 0 {
-						p = appendp(p, AI64Const, constAddr(get.From.Offset))
-						p = appendp(p, AI64Add)
+						p = appendp(p, AI32Const, constAddr(get.From.Offset))
+						p = appendp(p, AI32Add)
 					}
 				default:
 					panic("bad Get: invalid name")
 				}
 			}
 
-		case AI32Load, AI64Load, AF32Load, AF64Load, AI32Load8S, AI32Load8U, AI32Load16S, AI32Load16U, AI64Load8S, AI64Load8U, AI64Load16S, AI64Load16U, AI64Load32S, AI64Load32U:
+		//case AI32Load, AI64Load, AF32Load, AF64Load, AI32Load8S, AI32Load8U, AI32Load16S, AI32Load16U, AI64Load8S, AI64Load8U, AI64Load16S, AI64Load16U, AI64Load32S, AI64Load32U:
+		case AI32Load, AF32Load, AF64Load, AI32Load8S, AI32Load8U, AI32Load16S, AI32Load16U:
 			if p.From.Type == obj.TYPE_MEM {
 				as := p.As
 				from := p.From
 
 				p.As = AGet
 				p.From = regAddr(from.Reg)
-
-				if from.Reg != REG_SP {
-					p = appendp(p, AI32WrapI64)
-				}
 
 				p = appendp(p, as, constAddr(from.Offset))
 			}
@@ -754,50 +735,40 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			var storeAs obj.As
 			switch mov.As {
 			case AMOVB:
-				loadAs = AI64Load8U
-				storeAs = AI64Store8
+				loadAs = AI32Load8U
+				storeAs = AI32Store8
 			case AMOVH:
-				loadAs = AI64Load16U
-				storeAs = AI64Store16
-			case AMOVW:
-				loadAs = AI64Load32U
-				storeAs = AI64Store32
-			case AMOVD:
-				loadAs = AI64Load
-				storeAs = AI64Store
+				loadAs = AI32Load16U
+				storeAs = AI32Store16
+			case AMOVW, AMOVD:
+				loadAs = AI32Load
+				storeAs = AI32Store
+			default:
+				panic("bad move pardner")
 			}
 
 			appendValue := func() {
 				switch mov.From.Type {
 				case obj.TYPE_CONST:
-					p = appendp(p, AI64Const, constAddr(mov.From.Offset))
+					p = appendp(p, AI32Const, constAddr(mov.From.Offset))
 
 				case obj.TYPE_ADDR:
 					switch mov.From.Name {
 					case obj.NAME_NONE, obj.NAME_PARAM, obj.NAME_AUTO:
 						p = appendp(p, AGet, regAddr(mov.From.Reg))
-						if mov.From.Reg == REG_SP {
-							p = appendp(p, AI64ExtendI32U)
-						}
-						p = appendp(p, AI64Const, constAddr(mov.From.Offset))
-						p = appendp(p, AI64Add)
+						p = appendp(p, AI32Const, constAddr(mov.From.Offset))
+						p = appendp(p, AI32Add)
 					case obj.NAME_EXTERN:
-						p = appendp(p, AI64Const, mov.From)
+						p = appendp(p, AI32Const, mov.From)
 					default:
 						panic("bad name for MOV")
 					}
 
 				case obj.TYPE_REG:
 					p = appendp(p, AGet, mov.From)
-					if mov.From.Reg == REG_SP {
-						p = appendp(p, AI64ExtendI32U)
-					}
 
 				case obj.TYPE_MEM:
 					p = appendp(p, AGet, regAddr(mov.From.Reg))
-					if mov.From.Reg != REG_SP {
-						p = appendp(p, AI32WrapI64)
-					}
 					p = appendp(p, loadAs, constAddr(mov.From.Offset))
 
 				default:
@@ -808,18 +779,12 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			switch mov.To.Type {
 			case obj.TYPE_REG:
 				appendValue()
-				if mov.To.Reg == REG_SP {
-					p = appendp(p, AI32WrapI64)
-				}
 				p = appendp(p, ASet, mov.To)
 
 			case obj.TYPE_MEM:
 				switch mov.To.Name {
 				case obj.NAME_NONE, obj.NAME_PARAM:
 					p = appendp(p, AGet, regAddr(mov.To.Reg))
-					if mov.To.Reg != REG_SP {
-						p = appendp(p, AI32WrapI64)
-					}
 				case obj.NAME_EXTERN:
 					p = appendp(p, AI32Const, obj.Addr{Type: obj.TYPE_ADDR, Name: obj.NAME_EXTERN, Sym: mov.To.Sym})
 				default:
@@ -969,10 +934,10 @@ func assemble(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 		varDecls = []*varDecl{{count: 2, typ: i32}}
 		useAssemblyRegMap()
 	case "cmpbody":
-		varDecls = []*varDecl{{count: 2, typ: i64}}
+		varDecls = []*varDecl{{count: 2, typ: i32}}
 		useAssemblyRegMap()
 	case "gcWriteBarrier":
-		varDecls = []*varDecl{{count: 5, typ: i64}}
+		varDecls = []*varDecl{{count: 5, typ: i32}}
 		useAssemblyRegMap()
 	case "runtime.gcWriteBarrier1",
 		"runtime.gcWriteBarrier2",
@@ -1175,7 +1140,7 @@ func assemble(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 				updateLocalSP(w)
 			}
 
-		case AI32Const, AI64Const:
+		case AI32Const:
 			if p.From.Name == obj.NAME_EXTERN {
 				r := obj.Addrel(s)
 				r.Siz = 1 // actually variable sized
@@ -1197,7 +1162,8 @@ func assemble(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			binary.LittleEndian.PutUint64(b, math.Float64bits(p.From.Val.(float64)))
 			w.Write(b)
 
-		case AI32Load, AI64Load, AF32Load, AF64Load, AI32Load8S, AI32Load8U, AI32Load16S, AI32Load16U, AI64Load8S, AI64Load8U, AI64Load16S, AI64Load16U, AI64Load32S, AI64Load32U:
+		//case AI32Load, AI64Load, AF32Load, AF64Load, AI32Load8S, AI32Load8U, AI32Load16S, AI32Load16U, AI64Load8S, AI64Load8U, AI64Load16S, AI64Load16U, AI64Load32S, AI64Load32U:
+		case AI32Load, AF32Load, AF64Load, AI32Load8S, AI32Load8U, AI32Load16S, AI32Load16U:
 			if p.From.Offset < 0 {
 				panic("negative offset for *Load")
 			}
@@ -1210,7 +1176,8 @@ func assemble(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			writeUleb128(w, align(p.As))
 			writeUleb128(w, uint64(p.From.Offset))
 
-		case AI32Store, AI64Store, AF32Store, AF64Store, AI32Store8, AI32Store16, AI64Store8, AI64Store16, AI64Store32:
+		//case AI32Store, AI64Store, AF32Store, AF64Store, AI32Store8, AI32Store16, AI64Store8, AI64Store16, AI64Store32:
+		case AI32Store, AF32Store, AF64Store, AI32Store8, AI32Store16:
 			if p.To.Offset < 0 {
 				panic("negative offset")
 			}
@@ -1278,7 +1245,7 @@ func regType(reg int16) valueType {
 	case reg == REG_SP:
 		return i32
 	case reg >= REG_R0 && reg <= REG_R15:
-		return i64
+		return i32
 	case reg >= REG_F0 && reg <= REG_F15:
 		return f32
 	case reg >= REG_F16 && reg <= REG_F31:
