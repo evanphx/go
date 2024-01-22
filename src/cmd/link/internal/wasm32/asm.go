@@ -7,7 +7,7 @@ package wasm32
 import (
 	"bytes"
 	"cmd/internal/obj"
-	"cmd/internal/obj/wasm"
+	"cmd/internal/obj/wasm32"
 	"cmd/internal/objabi"
 	"cmd/link/internal/ld"
 	"cmd/link/internal/loader"
@@ -113,29 +113,30 @@ func readWasmImport(ldr *loader.Loader, s loader.Sym) obj.WasmImport {
 }
 
 var wasmFuncTypes = map[string]*wasmFuncType{
-	"_rt0_wasm_js":            {Params: []byte{}},                                         //
-	"_rt0_wasm_wasip1":        {Params: []byte{}},                                         //
-	"wasm_export__start":      {},                                                         //
-	"wasm_export_run":         {Params: []byte{I32, I32}},                                 // argc, argv
-	"wasm_export_resume":      {Params: []byte{}},                                         //
-	"wasm_export_getsp":       {Results: []byte{I32}},                                     // sp
-	"wasm_pc_f_loop":          {Params: []byte{}},                                         //
-	"runtime.wasmDiv":         {Params: []byte{I32, I32}, Results: []byte{I32}},           // x, y -> x/y
-	"runtime.wasmTruncS":      {Params: []byte{F64}, Results: []byte{I32}},                // x -> int(x)
-	"runtime.wasmTruncU":      {Params: []byte{F64}, Results: []byte{I32}},                // x -> uint(x)
-	"gcWriteBarrier":          {Params: []byte{I32}, Results: []byte{I32}},                // #bytes -> bufptr
-	"runtime.gcWriteBarrier1": {Results: []byte{I32}},                                     // -> bufptr
-	"runtime.gcWriteBarrier2": {Results: []byte{I32}},                                     // -> bufptr
-	"runtime.gcWriteBarrier3": {Results: []byte{I32}},                                     // -> bufptr
-	"runtime.gcWriteBarrier4": {Results: []byte{I32}},                                     // -> bufptr
-	"runtime.gcWriteBarrier5": {Results: []byte{I32}},                                     // -> bufptr
-	"runtime.gcWriteBarrier6": {Results: []byte{I32}},                                     // -> bufptr
-	"runtime.gcWriteBarrier7": {Results: []byte{I32}},                                     // -> bufptr
-	"runtime.gcWriteBarrier8": {Results: []byte{I32}},                                     // -> bufptr
-	"cmpbody":                 {Params: []byte{I32, I32, I32, I32}, Results: []byte{I32}}, // a, alen, b, blen -> -1/0/1
-	"memeqbody":               {Params: []byte{I32, I32, I32}, Results: []byte{I32}},      // a, b, len -> 0/1
-	"memcmp":                  {Params: []byte{I32, I32, I32}, Results: []byte{I32}},      // a, b, len -> <0/0/>0
-	"memchr":                  {Params: []byte{I32, I32, I32}, Results: []byte{I32}},      // s, c, len -> index
+	"_rt0_wasm_js":              {Params: []byte{}},                                         //
+	"_rt0_wasm32_wasip1":        {Params: []byte{}},                                         //
+	"wasm_export__start":        {},                                                         //
+	"wasm_export_run":           {Params: []byte{I32, I32}},                                 // argc, argv
+	"wasm_export_resume":        {Params: []byte{}},                                         //
+	"wasm_export_getsp":         {Results: []byte{I32}},                                     // sp
+	"wasm_pc_f_loop":            {Params: []byte{}},                                         //
+	"runtime.wasmDiv":           {Params: []byte{I32, I32}, Results: []byte{I32}},           // x, y -> x/y
+	"runtime.wasmTruncS":        {Params: []byte{F64}, Results: []byte{I32}},                // x -> int(x)
+	"runtime.wasmTruncU":        {Params: []byte{F64}, Results: []byte{I32}},                // x -> uint(x)
+	"gcWriteBarrier":            {Params: []byte{I32}, Results: []byte{I32}},                // #bytes -> bufptr
+	"runtime.gcWriteBarrier1":   {Results: []byte{I32}},                                     // -> bufptr
+	"runtime.gcWriteBarrier2":   {Results: []byte{I32}},                                     // -> bufptr
+	"runtime.gcWriteBarrier3":   {Results: []byte{I32}},                                     // -> bufptr
+	"runtime.gcWriteBarrier4":   {Results: []byte{I32}},                                     // -> bufptr
+	"runtime.gcWriteBarrier5":   {Results: []byte{I32}},                                     // -> bufptr
+	"runtime.gcWriteBarrier6":   {Results: []byte{I32}},                                     // -> bufptr
+	"runtime.gcWriteBarrier7":   {Results: []byte{I32}},                                     // -> bufptr
+	"runtime.gcWriteBarrier8":   {Results: []byte{I32}},                                     // -> bufptr
+	"runtime.panicExtendIndexU": {Params: []byte{I32, I32, I32}},                            // -> bufptr
+	"cmpbody":                   {Params: []byte{I32, I32, I32, I32}, Results: []byte{I32}}, // a, alen, b, blen -> -1/0/1
+	"memeqbody":                 {Params: []byte{I32, I32, I32}, Results: []byte{I32}},      // a, b, len -> 0/1
+	"memcmp":                    {Params: []byte{I32, I32, I32}, Results: []byte{I32}},      // a, b, len -> <0/0/>0
+	"memchr":                    {Params: []byte{I32, I32, I32}, Results: []byte{I32}},      // s, c, len -> index
 }
 
 func assignAddress(ldr *loader.Loader, sect *sym.Section, n int, s loader.Sym, va uint64, isTramp bool) (*sym.Section, int, uint64) {
@@ -154,7 +155,9 @@ func assignAddress(ldr *loader.Loader, sect *sym.Section, n int, s loader.Sym, v
 	// However, there is no PC register, only PC_F and PC_B. PC_F denotes the function,
 	// PC_B the resume point inside of that function. The entry of the function has PC_B = 0.
 	ldr.SetSymSect(s, sect)
-	ldr.SetSymValue(s, int64(funcValueOffset+va/ld.MINFUNC)<<16) // va starts at zero
+	addr := int64(funcValueOffset+va/ld.MINFUNC) << 16 // va starts at zero
+	fmt.Printf("wasm32 assign: %d (%s) => %d\n", s, ldr.SymName(s), addr)
+	ldr.SetSymValue(s, addr) // va starts at zero
 	va += uint64(ld.MINFUNC)
 	return sect, n, va
 }
@@ -358,7 +361,7 @@ func writeImportSec(ctxt *ld.Link, hostImports []*wasmFunc) {
 		if fn.Module != "" {
 			writeName(ctxt.Out, fn.Module)
 		} else {
-			writeName(ctxt.Out, wasm.GojsModule) // provided by the import object in wasm_exec.js
+			writeName(ctxt.Out, wasm32.GojsModule) // provided by the import object in wasm_exec.js
 		}
 		writeName(ctxt.Out, fn.Name)
 		ctxt.Out.WriteByte(0x00) // func import
@@ -455,9 +458,9 @@ func writeExportSec(ctxt *ld.Link, ldr *loader.Loader, lenHostImports int) {
 	switch buildcfg.GOOS {
 	case "wasip1":
 		writeUleb128(ctxt.Out, 2) // number of exports
-		s := ldr.Lookup("_rt0_wasm_wasip1", 0)
+		s := ldr.Lookup("_rt0_wasm32_wasip1", 0)
 		if s == 0 {
-			panic("missing _rt0_wasm_wasip1")
+			panic("missing _rt0_wasm323232_wasip1")
 		}
 
 		fmt.Printf("_start pos: %d %d %d\n", lenHostImports, s, ldr.SymValue(s))

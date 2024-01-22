@@ -328,29 +328,33 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 	case ssa.OpWasm32LoweredAdd32withcarry:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
+		s.Prog(wasm32.AI32Add)
 		//getValue32(s, v.Args[2])
-		base.WarnfAt(v.Pos, "noop for add32withcarry")
+		base.WarnfAt(v.Pos, "partial for add32withcarry")
 
 		setReg(s, v.Reg())
 
 	case ssa.OpWasm32LoweredAdd32carry:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
-		base.WarnfAt(v.Pos, "noop for add32carry")
+		s.Prog(wasm32.AI32Add)
+		base.WarnfAt(v.Pos, "partial for add32carry")
 
 		setReg(s, v.Reg0())
 	case ssa.OpWasm32LoweredSub32withcarry:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
+		s.Prog(wasm32.AI32Sub)
 		//getValue32(s, v.Args[2])
-		base.WarnfAt(v.Pos, "noop for sub32withcarry")
+		base.WarnfAt(v.Pos, "partial for sub32withcarry")
 
 		setReg(s, v.Reg())
 
 	case ssa.OpWasm32LoweredSub32carry:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
-		base.WarnfAt(v.Pos, "noop for sub32carry")
+		s.Prog(wasm32.AI32Sub)
+		base.WarnfAt(v.Pos, "partial for sub32carry")
 
 		setReg(s, v.Reg0())
 	case ssa.OpClobber, ssa.OpClobberReg:
@@ -439,7 +443,7 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) bool {
 	case ssa.OpWasm32LoweredMul32uhilo:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
-		base.WarnfAt(v.Pos, "noop for mul32uhilo")
+		s.Prog(wasm32.AI32Mul)
 
 		p := s.Prog(wasm32.ASet)
 		p.To = obj.Addr{
@@ -451,15 +455,13 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) bool {
 	case ssa.OpWasm32LoweredHighMul:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
-		base.WarnfAt(v.Pos, "noop for loweredHighMul")
-
-		s.Prog(wasm32.ANop)
+		s.Prog(wasm32.AI32Mul)
+		base.WarnfAt(v.Pos, "partial for loweredHighMul")
 	case ssa.OpWasm32LoweredHighMulU:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
-		base.WarnfAt(v.Pos, "noop for loweredHighMulU")
-
-		s.Prog(wasm32.ANop)
+		s.Prog(wasm32.AI32Mul)
+		base.WarnfAt(v.Pos, "partial for loweredHighMulU")
 	case ssa.OpWasm32Select:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])

@@ -6,7 +6,7 @@
 #include "go_asm.h"
 #include "textflag.h"
 
-TEXT _rt0_wasm_wasip1(SB),NOSPLIT,$0
+TEXT _rt0_wasm32_wasip1(SB),NOSPLIT,$0
 	MOVW $runtime·wasmStack+(m0Stack__size-16)(SB), SP
 
 	I32Const $0 // entry PC_B

@@ -78,6 +78,23 @@ var Register = map[string]int16{
 	"F31": REG_F31,
 
 	"PC_B": REG_PC_B,
+
+	"X0":  REG_X0,
+	"X1":  REG_X1,
+	"X2":  REG_X2,
+	"X3":  REG_X3,
+	"X4":  REG_X4,
+	"X5":  REG_X5,
+	"X6":  REG_X6,
+	"X7":  REG_X7,
+	"X8":  REG_X8,
+	"X9":  REG_X9,
+	"X10": REG_X10,
+	"X11": REG_X11,
+	"X12": REG_X12,
+	"X13": REG_X13,
+	"X14": REG_X14,
+	"X15": REG_X15,
 }
 
 var registerNames []string
@@ -242,6 +259,9 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 				// We're reading the value from the Go stack onto the WASM stack and leaving it there
 				// for CALL to pick them up.
 				switch f.Type {
+				case obj.WasmI64:
+					p = appendp(p, AI32Load, constAddr(loadOffset))
+					p = appendp(p, AI64ExtendI32S)
 				case obj.WasmI32:
 					p = appendp(p, AI32Load, constAddr(loadOffset))
 				case obj.WasmF32:
@@ -926,7 +946,7 @@ func assemble(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 	// Function starts with declaration of locals: numbers and types.
 	// Some functions use a special calling convention.
 	switch s.Name {
-	case "_rt0_wasm_js", "_rt0_wasm_wasip1", "wasm_export_run", "wasm_export_resume", "wasm_export_getsp",
+	case "_rt0_wasm_js", "_rt0_wasm32_wasip1", "wasm_export_run", "wasm_export_resume", "wasm_export_getsp",
 		"wasm_pc_f_loop", "runtime.wasmDiv", "runtime.wasmTruncS", "runtime.wasmTruncU", "memeqbody":
 		varDecls = []*varDecl{}
 		useAssemblyRegMap()
@@ -1029,30 +1049,48 @@ func assemble(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			if p.To.Type != obj.TYPE_REG {
 				if p.To.Type == obj.TYPE_REGREG {
 					fmt.Printf("WARN: using wrong regreg")
+					reg := p.To.Reg
+					v := regVars[reg-MINREG]
+					if v == nil {
+						panic("bad Set: invalid register")
+					}
+					writeOpcode(w, ALocalSet)
+					writeUleb128(w, v.index)
+
+					/*
+						reg = int16(p.To.Offset)
+						v = regVars[reg-MINREG]
+						if v == nil {
+							panic(fmt.Sprintf("bad Set: invalid register in regreg: %d", reg))
+						}
+						writeOpcode(w, ALocalSet)
+						writeUleb128(w, v.index)
+					*/
 				} else {
 					panic("bad Set: argument is not a register")
 				}
-			}
-			reg := p.To.Reg
-			v := regVars[reg-MINREG]
-			if v == nil {
-				panic("bad Set: invalid register")
-			}
-			if reg == REG_SP && hasLocalSP {
-				writeOpcode(w, ALocalTee)
-				writeUleb128(w, 1) // local SP
-			}
-			if v.global {
-				writeOpcode(w, AGlobalSet)
 			} else {
-				if p.Link.As == AGet && p.Link.From.Reg == reg {
-					writeOpcode(w, ALocalTee)
-					p = p.Link
-				} else {
-					writeOpcode(w, ALocalSet)
+				reg := p.To.Reg
+				v := regVars[reg-MINREG]
+				if v == nil {
+					panic("bad Set: invalid register")
 				}
+				if reg == REG_SP && hasLocalSP {
+					writeOpcode(w, ALocalTee)
+					writeUleb128(w, 1) // local SP
+				}
+				if v.global {
+					writeOpcode(w, AGlobalSet)
+				} else {
+					if p.Link.As == AGet && p.Link.From.Reg == reg {
+						writeOpcode(w, ALocalTee)
+						p = p.Link
+					} else {
+						writeOpcode(w, ALocalSet)
+					}
+				}
+				writeUleb128(w, v.index)
 			}
-			writeUleb128(w, v.index)
 			continue
 
 		case ATee:
@@ -1250,6 +1288,8 @@ func regType(reg int16) valueType {
 		return f32
 	case reg >= REG_F16 && reg <= REG_F31:
 		return f64
+	case reg >= REG_X0 && reg <= REG_X15:
+		return i64
 	default:
 		panic("invalid register")
 	}

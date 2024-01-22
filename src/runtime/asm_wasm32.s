@@ -38,6 +38,10 @@ TEXT ·checkASM(SB), NOSPLIT, $0-1
 	MOVB $1, ret+0(FP)
 	RET
 
+TEXT runtime·checkcomp(SB), NOSPLIT, $0-8
+	MOVB $1, ret+0(FP)
+	RET
+
 TEXT runtime·gogo(SB), NOSPLIT, $0-8
 	MOVW buf+0(FP), R0
 	MOVW gobuf_g(R0), R1
@@ -547,3 +551,116 @@ TEXT wasm_pc_f_loop(SB),NOSPLIT,$0
 
 TEXT wasm_export_lib(SB),NOSPLIT,$0
 	UNDEF
+
+// Extended versions for 64-bit indexes.
+TEXT runtime·panicExtendIndex(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALLNORESUME	runtime·goPanicExtendIndex(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendIndexU(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALLNORESUME	runtime·goPanicExtendIndexU(SB)
+	RET
+TEXT runtime·panicExtendSliceAlen(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSliceAlen(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSliceAlenU(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSliceAlenU(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSliceAcap(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSliceAcap(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSliceAcapU(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSliceAcapU(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSliceB(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSliceB(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSliceBU(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSliceBU(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSlice3Alen(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSlice3Alen(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSlice3AlenU(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSlice3AlenU(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSlice3Acap(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSlice3Acap(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSlice3AcapU(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSlice3AcapU(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSlice3B(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSlice3B(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSlice3BU(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSlice3BU(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSlice3C(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSlice3C(SB)
+	Set R0 // basically drop
+	RET
+TEXT runtime·panicExtendSlice3CU(SB),NOSPLIT,$0-12
+	MOVW	R0, hi+0(FP)
+	MOVW	R1, lo+4(FP)
+	MOVW	R2, y+8(FP)
+	CALL	runtime·goPanicExtendSlice3CU(SB)
+	Set R0 // basically drop
+	RET

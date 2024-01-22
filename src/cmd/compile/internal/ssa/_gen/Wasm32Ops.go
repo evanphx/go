@@ -59,6 +59,23 @@ func init() {
 		"F30",
 		"F31",
 
+		"X0",
+		"X1",
+		"X2",
+		"X3",
+		"X4",
+		"X5",
+		"X6",
+		"X7",
+		"X8",
+		"X9",
+		"X10",
+		"X11",
+		"X12",
+		"X13",
+		"X14",
+		"X15",
+
 		"SP",
 		"g",
 
@@ -67,7 +84,7 @@ func init() {
 	}
 
 	// Make map from reg names to reg integers.
-	if len(regNamesWasm) > 64 {
+	if len(regNamesWasm) > 80 {
 		panic("too many registers")
 	}
 	num := map[string]int{}

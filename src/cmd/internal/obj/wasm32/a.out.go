@@ -266,7 +266,7 @@ const (
 
 const (
 	// globals
-	REG_SP = obj.RBaseWasm + iota // SP is currently 32-bit, until 64-bit memory operations are available
+	REG_SP = obj.RBaseWasm + iota
 	REG_CTXT
 	REG_g
 	// RET* are used by runtime.return0 and runtime.reflectcall. These functions pass return values in registers.
@@ -331,6 +331,24 @@ const (
 	REG_F31
 
 	REG_PC_B // also first parameter, i32
+
+	// i64 locals
+	REG_X0
+	REG_X1
+	REG_X2
+	REG_X3
+	REG_X4
+	REG_X5
+	REG_X6
+	REG_X7
+	REG_X8
+	REG_X9
+	REG_X10
+	REG_X11
+	REG_X12
+	REG_X13
+	REG_X14
+	REG_X15
 
 	MAXREG
 

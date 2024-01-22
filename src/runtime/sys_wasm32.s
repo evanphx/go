@@ -16,7 +16,7 @@ TEXT runtime·wasmDiv(SB), NOSPLIT, $0-0
 		I64Const $-1
 		I64Eq
 		If
-			I64Const $-0x8000000000000000
+			I32Const $-0x80000000
 			Return
 		End
 	End
@@ -30,7 +30,7 @@ TEXT runtime·wasmTruncS(SB), NOSPLIT, $0-0
 	Get R0
 	F64Ne // NaN
 	If
-		I64Const $0x8000000000000000
+		I32Const 0 // fixme
 		Return
 	End
 
@@ -38,7 +38,7 @@ TEXT runtime·wasmTruncS(SB), NOSPLIT, $0-0
 	F64Const $0x7ffffffffffffc00p0 // Maximum truncated representation of 0x7fffffffffffffff
 	F64Gt
 	If
-		I64Const $0x8000000000000000
+		I32Const 0
 		Return
 	End
 
@@ -46,12 +46,12 @@ TEXT runtime·wasmTruncS(SB), NOSPLIT, $0-0
 	F64Const $-0x7ffffffffffffc00p0 // Minimum truncated representation of -0x8000000000000000
 	F64Lt
 	If
-		I64Const $0x8000000000000000
+		I32Const 0 // fixme
 		Return
 	End
 
 	Get R0
-	I64TruncF64S
+	I32TruncF64S
 	Return
 
 TEXT runtime·wasmTruncU(SB), NOSPLIT, $0-0
@@ -59,7 +59,7 @@ TEXT runtime·wasmTruncU(SB), NOSPLIT, $0-0
 	Get R0
 	F64Ne // NaN
 	If
-		I64Const $0x8000000000000000
+		I32Const  0 // fixme
 		Return
 	End
 
@@ -67,7 +67,7 @@ TEXT runtime·wasmTruncU(SB), NOSPLIT, $0-0
 	F64Const $0xfffffffffffff800p0 // Maximum truncated representation of 0xffffffffffffffff
 	F64Gt
 	If
-		I64Const $0x8000000000000000
+		I32Const 0 // fixme
 		Return
 	End
 
@@ -75,12 +75,12 @@ TEXT runtime·wasmTruncU(SB), NOSPLIT, $0-0
 	F64Const $0.
 	F64Lt
 	If
-		I64Const $0x8000000000000000
+		I32Const 0 // fixme
 		Return
 	End
 
 	Get R0
-	I64TruncF64U
+	I32TruncF64U
 	Return
 
 TEXT runtime·exitThread(SB), NOSPLIT, $0-0
