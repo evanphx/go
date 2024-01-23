@@ -953,6 +953,7 @@ func (c *mcache) nextFree(spc spanClass) (v gclinkptr, s *mspan, shouldhelpgc bo
 	}
 
 	if freeIndex >= s.nelems {
+		println("freeIndex is not valid=", freeIndex)
 		throw("freeIndex is not valid")
 	}
 

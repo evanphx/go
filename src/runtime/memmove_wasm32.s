@@ -10,8 +10,8 @@
 // func memmove(to, from unsafe.Pointer, n uintptr)
 TEXT runtime·memmove(SB), NOSPLIT, $0-24
 	MOVW to+0(FP), R0
-	MOVW from+8(FP), R1
-	MOVW n+16(FP), R2
+	MOVW from+4(FP), R1
+	MOVW n+8(FP), R2
 
 	Get R0
 	Get R1

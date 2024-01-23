@@ -156,8 +156,7 @@ func assignAddress(ldr *loader.Loader, sect *sym.Section, n int, s loader.Sym, v
 	// PC_B the resume point inside of that function. The entry of the function has PC_B = 0.
 	ldr.SetSymSect(s, sect)
 	addr := int64(funcValueOffset+va/ld.MINFUNC) << 16 // va starts at zero
-	fmt.Printf("wasm32 assign: %d (%s) => %d\n", s, ldr.SymName(s), addr)
-	ldr.SetSymValue(s, addr) // va starts at zero
+	ldr.SetSymValue(s, addr)                           // va starts at zero
 	va += uint64(ld.MINFUNC)
 	return sect, n, va
 }

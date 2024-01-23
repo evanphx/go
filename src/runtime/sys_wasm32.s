@@ -93,5 +93,5 @@ TEXT runtime·growMemory(SB), NOSPLIT, $0
 	Get SP
 	I32Load pages+0(FP)
 	GrowMemory
-	I32Store ret+8(FP)
+	I32Store ret+4(FP)
 	RET

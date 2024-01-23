@@ -180,7 +180,7 @@ func addlibpath(ctxt *Link, srcref, objref, file, pkg, shlib string, fingerprint
 		return l
 	}
 
-	if true { // ctxt.Debugvlog > 1 {
+	if ctxt.Debugvlog > 1 {
 		ctxt.Logf("addlibpath: srcref: %s objref: %s file: %s pkg: %s shlib: %s fingerprint: %x\n", srcref, objref, file, pkg, shlib, fingerprint)
 	}
 

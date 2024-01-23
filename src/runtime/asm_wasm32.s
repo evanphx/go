@@ -303,14 +303,15 @@ TEXT ·asmcgocall(SB), NOSPLIT, $0-0
 		JMP NAME(SB); \
 	End
 
+// func reflectcall(stackArgsType *_type, fn, stackArgs unsafe.Pointer, stackArgsSize, stackRetOffset, frameSize uint32, regArgs *abi.RegArgs)
 TEXT ·reflectcall(SB), NOSPLIT, $0-48
-	I32Load fn+8(FP)
+	I32Load fn+4(FP)
 	I32Eqz
 	If
 		CALLNORESUME runtime·sigpanic<ABIInternal>(SB)
 	End
 
-	MOVW frameSize+32(FP), R0
+	MOVW frameSize+16(FP), R0
 
 	DISPATCH(runtime·call16, 16)
 	DISPATCH(runtime·call32, 32)
@@ -344,29 +345,29 @@ TEXT ·reflectcall(SB), NOSPLIT, $0-48
 #define CALLFN(NAME, MAXSIZE) \
 TEXT NAME(SB), WRAPPER, $MAXSIZE-48; \
 	NO_LOCAL_POINTERS; \
-	MOVW stackArgsSize+24(FP), R0; \
+	MOVW stackArgsSize+12(FP), R0; \
 	\
 	Get R0; \
 	I32Eqz; \
 	Not; \
 	If; \
 		Get SP; \
-		I32Load stackArgs+16(FP); \
-		I32Load stackArgsSize+24(FP); \
+		I32Load stackArgs+8(FP); \
+		I32Load stackArgsSize+12(FP); \
 		MemoryCopy; \
 	End; \
 	\
-	MOVW f+8(FP), CTXT; \
+	MOVW f+4(FP), CTXT; \
 	Get CTXT; \
 	I32Load $0; \
 	CALL; \
 	\
-	I32Load stackRetOffset+28(FP); \
+	I32Load stackRetOffset+14(FP); \
 	Set R0; \
 	\
 	MOVW stackArgsType+0(FP), RET0; \
 	\
-	I32Load stackArgs+16(FP); \
+	I32Load stackArgs+8(FP); \
 	Get R0; \
 	I32Add; \
 	Set RET1; \
@@ -376,7 +377,7 @@ TEXT NAME(SB), WRAPPER, $MAXSIZE-48; \
 	I32Add; \
 	Set RET2; \
 	\
-	I32Load stackArgsSize+24(FP); \
+	I32Load stackArgsSize+12(FP); \
 	Get R0; \
 	I32Sub; \
 	Set RET3; \
@@ -391,10 +392,10 @@ TEXT NAME(SB), WRAPPER, $MAXSIZE-48; \
 TEXT callRet<>(SB), NOSPLIT, $40-0
 	NO_LOCAL_POINTERS
 	MOVW RET0, 0(SP)
-	MOVW RET1, 8(SP)
-	MOVW RET2, 16(SP)
-	MOVW RET3, 24(SP)
-	MOVW $0,   32(SP)
+	MOVW RET1, 4(SP)
+	MOVW RET2, 8(SP)
+	MOVW RET3, 12(SP)
+	MOVW $0,   16(SP)
 	CALL runtime·reflectcallmove(SB)
 	RET
 
@@ -526,12 +527,12 @@ TEXT wasm_pc_f_loop(SB),NOSPLIT,$0
 		Loop
 			// Get PC_B & PC_F from -8(SP)
 			Get SP
-			I32Const $8
+			I32Const $4
 			I32Sub
 			I32Load16U $0 // PC_B
 
 			Get SP
-			I32Const $8
+			I32Const $4
 			I32Sub
 			I32Load16U $2 // PC_F
 

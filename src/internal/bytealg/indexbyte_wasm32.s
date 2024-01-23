@@ -8,8 +8,8 @@
 
 TEXT ·IndexByte(SB), NOSPLIT, $0-40
 	I32Load b_base+0(FP)
-	I32Load8U c+24(FP)
-	I32Load b_len+8(FP)
+	I32Load8U c+12(FP)
+	I32Load b_len+4(FP)
 	Call memchr<>(SB)
 	Set R0
 
@@ -21,15 +21,15 @@ TEXT ·IndexByte(SB), NOSPLIT, $0-40
 	Get R0
 	I32Eqz $0
 	Select
-	I32Store ret+32(FP)
+	I32Store ret+16(FP)
 
 	RET
 
 TEXT ·IndexByteString(SB), NOSPLIT, $0-32
 	Get SP
 	I32Load s_base+0(FP)
-	I32Load8U c+16(FP)
-	I32Load s_len+8(FP)
+	I32Load8U c+8(FP)
+	I32Load s_len+4(FP)
 	Call memchr<>(SB)
 	Set R0
 
@@ -40,7 +40,7 @@ TEXT ·IndexByteString(SB), NOSPLIT, $0-32
 	Get R0
 	I32Eqz $0
 	Select
-	I32Store ret+24(FP)
+	I32Store ret+12(FP)
 
 	RET
 

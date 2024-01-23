@@ -10,20 +10,20 @@
 TEXT runtime·memequal(SB), NOSPLIT, $0-25
 	Get SP
 	I32Load a+0(FP)
-	I32Load b+8(FP)
-	I32Load size+16(FP)
+	I32Load b+4(FP)
+	I32Load size+8(FP)
 	Call memeqbody<>(SB)
-	I32Store8 ret+24(FP)
+	I32Store8 ret+12(FP)
 	RET
 
 // memequal_varlen(a, b unsafe.Pointer) bool
 TEXT runtime·memequal_varlen(SB), NOSPLIT, $0-17
 	Get SP
 	I32Load a+0(FP)
-	I32Load b+8(FP)
+	I32Load b+4(FP)
 	I32Load 8(CTXT) // compiler stores size at offset 8 in the closure
 	Call memeqbody<>(SB)
-	I32Store8 ret+16(FP)
+	I32Store8 ret+8(FP)
 	RET
 
 // params: a, b, len

@@ -7,5 +7,5 @@
 
 TEXT ·StorepNoWB(SB), NOSPLIT, $0-16
 	MOVW ptr+0(FP), R0
-	MOVW val+8(FP), 0(R0)
+	MOVW val+4(FP), 0(R0)
 	RET
