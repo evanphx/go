@@ -462,7 +462,6 @@ func writeExportSec(ctxt *ld.Link, ldr *loader.Loader, lenHostImports int) {
 			panic("missing _rt0_wasm323232_wasip1")
 		}
 
-		fmt.Printf("_start pos: %d %d %d\n", lenHostImports, s, ldr.SymValue(s))
 		idx := uint32(lenHostImports) + uint32(ldr.SymValue(s)>>16) - funcValueOffset
 		writeName(ctxt.Out, "_start")       // the wasi entrypoint
 		ctxt.Out.WriteByte(0x00)            // func export

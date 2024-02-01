@@ -245,17 +245,58 @@ func walltime() (sec int64, nsec int32) {
 }
 
 func walltime1() (sec int64, nsec int32) {
-	var time timestamp
-	if clock_time_get(clockRealtime, 0, unsafe.Pointer(&time)) != 0 {
+	timePtr := tmpUint64_1()
+
+	if clock_time_get(clockRealtime, 0, unsafe.Pointer(timePtr)) != 0 {
 		throw("clock_time_get failed")
 	}
+
+	time := timestamp(*timePtr)
 	return int64(time / 1000000000), int32(time % 1000000000)
 }
 
 func nanotime1() int64 {
-	var time timestamp
-	if clock_time_get(clockMonotonic, 0, unsafe.Pointer(&time)) != 0 {
+	timePtr := tmpUint64_1()
+
+	if clock_time_get(clockMonotonic, 0, unsafe.Pointer(timePtr)) != 0 {
 		throw("clock_time_get failed")
 	}
-	return int64(time)
+
+	return int64(*timePtr)
+}
+
+// This is a bit of a hack because wasi expects 8 byte aligned pointers
+// when the return value is a uint64, but the wasm32 port doesn't adher
+// to managing the stack at 8 byte alignment. So because we don't have
+// real threads anyway, we effectively use a set of globals as 8 byte
+// aligned pointers, knowing that (at present) there is no chance that
+// another goroutine can be running and reuse the same pointer. Note that
+// the pointers are grab, passed to WASI, then read in the same function
+// always.
+type tmpStackS struct {
+	_ [1024]byte
+}
+
+var tmpStack tmpStackS
+
+func tmpUint64_1() *uint64 {
+	ptr := uintptr(unsafe.Pointer(&tmpStack))
+
+	if ptr%8 != 0 {
+		ptr += 8 - (ptr % 8)
+	}
+
+	return (*uint64)(unsafe.Pointer(ptr))
+}
+
+func tmpUint64_2() *uint64 {
+	ptr := uintptr(unsafe.Pointer(&tmpStack))
+
+	ptr += 16
+
+	if ptr%8 != 0 {
+		ptr += 8 - (ptr % 8)
+	}
+
+	return (*uint64)(unsafe.Pointer(ptr))
 }

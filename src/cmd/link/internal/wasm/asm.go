@@ -457,7 +457,6 @@ func writeExportSec(ctxt *ld.Link, ldr *loader.Loader, lenHostImports int) {
 	case "wasip1":
 		writeUleb128(ctxt.Out, 2) // number of exports
 		s := ldr.Lookup("_rt0_wasm_wasip1", 0)
-		fmt.Printf("_start pos: %d %d %d\n", lenHostImports, s, ldr.SymValue(s))
 		idx := uint32(lenHostImports) + uint32(ldr.SymValue(s)>>16) - funcValueOffset
 		writeName(ctxt.Out, "_start")       // the wasi entrypoint
 		ctxt.Out.WriteByte(0x00)            // func export
