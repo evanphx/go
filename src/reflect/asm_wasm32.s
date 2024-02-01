@@ -36,7 +36,7 @@ TEXT ·makeFuncStub(SB),(NOSPLIT|WRAPPER),$40
 TEXT ·methodValueCall(SB),(NOSPLIT|WRAPPER),$40
 	NO_LOCAL_POINTERS
 
-	MOVD CTXT, 0(SP)
+	MOVW CTXT, 0(SP)
 
 	Get SP
 	Get SP
@@ -45,9 +45,9 @@ TEXT ·methodValueCall(SB),(NOSPLIT|WRAPPER),$40
 	I64Add
 	I64Store $8
 
-	MOVB $0, 32(SP)
-	MOVD $32(SP), 16(SP)
-	MOVD $0, 24(SP)
+	MOVB $0, 16(SP)
+	MOVW $16(SP), 8(SP)
+	MOVW $0, 12(SP)
 
 	CALL ·callMethod(SB)
 	RET

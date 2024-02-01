@@ -1335,6 +1335,9 @@ func (s *regAllocState) regalloc(f *Func) {
 			}
 			if v.Op == OpSelect0 || v.Op == OpSelect1 || v.Op == OpSelectN {
 				if s.values[v.ID].needReg {
+					if v.Args[0].OnWasmStack {
+						panic("uh oh, selecting something on wasm stack!")
+					}
 					if v.Op == OpSelectN {
 						s.assignReg(register(s.f.getHome(v.Args[0].ID).(LocResults)[int(v.AuxInt)].(*Register).num), v, v)
 					} else {
@@ -1342,7 +1345,17 @@ func (s *regAllocState) regalloc(f *Func) {
 						if v.Op == OpSelect1 {
 							i = 1
 						}
-						s.assignReg(register(s.f.getHome(v.Args[0].ID).(LocPair)[i].(*Register).num), v, v)
+						if lp, ok := s.f.getHome(v.Args[0].ID).(LocPair); ok {
+							if reg, ok := lp[i].(*Register); ok {
+								s.assignReg(register(reg.num), v, v)
+							} else {
+								panic(fmt.Sprintf("arg0 loc pair %d not a register (%s)", i, v.Op))
+
+							}
+						} else {
+							panic(fmt.Sprintf("arg0 not a loc pair (%s)", v.Op))
+						}
+						//s.assignReg(register(s.f.getHome(v.Args[0].ID).(LocPair)[i].(*Register).num), v, v)
 					}
 				}
 				b.Values = append(b.Values, v)

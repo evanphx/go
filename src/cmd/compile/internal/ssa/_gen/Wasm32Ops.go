@@ -69,12 +69,6 @@ func init() {
 		"X7",
 		"X8",
 		"X9",
-		"X10",
-		"X11",
-		"X12",
-		"X13",
-		"X14",
-		"X15",
 
 		"SP",
 		"g",
@@ -112,7 +106,6 @@ func init() {
 		// The "registers", which are actually local variables, can get clobbered
 		// if we're switching goroutines, because it unwinds the WebAssembly stack.
 		callerSave = gp | fp32 | fp64 | buildReg("g")
-		gponly     = []regMask{gp}
 	)
 
 	// Common regInfo
@@ -120,9 +113,7 @@ func init() {
 		gp01      = regInfo{inputs: nil, outputs: []regMask{gp}}
 		gp11      = regInfo{inputs: []regMask{gpsp}, outputs: []regMask{gp}}
 		gp21      = regInfo{inputs: []regMask{gpsp, gpsp}, outputs: []regMask{gp}}
-		gp22      = regInfo{inputs: []regMask{gpsp, gpsp}, outputs: []regMask{gp, gp}}
-		gp21carry = regInfo{inputs: []regMask{gpsp, gpsp}, outputs: []regMask{gp, 0}}
-		gp2carry1 = regInfo{inputs: []regMask{gpsp, gpsp}, outputs: gponly}
+		gp42      = regInfo{inputs: []regMask{gp, gp, gp, gp}, outputs: []regMask{gp, gp}}
 		gp31      = regInfo{inputs: []regMask{gpsp, gpsp, gpsp}, outputs: []regMask{gp}}
 		fp32_01   = regInfo{inputs: nil, outputs: []regMask{fp32}}
 		fp32_11   = regInfo{inputs: []regMask{fp32}, outputs: []regMask{fp32}}
@@ -165,13 +156,13 @@ func init() {
 		// TODO(neelance): LoweredConvert should not be necessary any more, since OpConvert does not need to be lowered any more (CL 108496).
 		{name: "LoweredConvert", argLength: 2, reg: regInfo{inputs: []regMask{gp}, outputs: []regMask{gp}}},
 
-		{name: "LoweredMul32uhilo", argLength: 2, reg: gp22, wasmForceStack: true},
-		{name: "LoweredAdd32withcarry", argLength: 3, reg: gp2carry1, commutative: true, wasmForceStack: true},
-		{name: "LoweredAdd32carry", argLength: 2, reg: gp21carry, commutative: true, wasmForceStack: true},
-		{name: "LoweredSub32withcarry", argLength: 3, reg: gp2carry1, commutative: true, wasmForceStack: true},
-		{name: "LoweredSub32carry", argLength: 2, reg: gp21carry, commutative: true, wasmForceStack: true},
-		{name: "LoweredHighMul", argLength: 2, reg: gp21, commutative: true},  // (arg0 * arg1) >> 32, signed
-		{name: "LoweredHighMulU", argLength: 2, reg: gp21, commutative: true}, // (arg0 * arg1) >> 32, unsigned
+		{name: "Mul64Decomp", argLength: 4, typ: "(UInt32,UInt32)", reg: gp42, wasmForceStack: true},  // (arg0 * arg1) >> 32, signed
+		{name: "Div64Decomp", argLength: 4, typ: "(UInt32,UInt32)", reg: gp42, wasmForceStack: true},  // (arg0 * arg1) >> 32, signed
+		{name: "Div64uDecomp", argLength: 4, typ: "(UInt32,UInt32)", reg: gp42, wasmForceStack: true}, // (arg0 * arg1) >> 32, signed
+		{name: "Mod64Decomp", argLength: 4, typ: "(UInt32,UInt32)", reg: gp42, wasmForceStack: true},  // (arg0 * arg1) >> 32, signed
+		{name: "Mod64uDecomp", argLength: 4, typ: "(UInt32,UInt32)", reg: gp42, wasmForceStack: true}, // (arg0 * arg1) >> 32, signed
+		{name: "Add64Decomp", argLength: 4, typ: "(UInt32,UInt32)", reg: gp42, wasmForceStack: true},  // (arg0 * arg1) >> 32, signed
+		{name: "Sub64Decomp", argLength: 4, typ: "(UInt32,UInt32)", reg: gp42, wasmForceStack: true},  // (arg0 * arg1) >> 32, signed
 
 		// Copied from 386Ops.go
 		{name: "LoweredPanicExtendA", argLength: 4, aux: "Int64", reg: regInfo{inputs: []regMask{gp, gp, gp}}, typ: "Mem", call: true}, // arg0=idxHi, arg1=idxLo, arg2=len, arg3=mem, returns memory. AuxInt contains report code (see PanicExtend in genericOps.go).

@@ -38,6 +38,8 @@ TEXT runtime·_mul64by32(SB), NOSPLIT, $0
 	RET
 
 TEXT runtime·_div64by32(SB), NOSPLIT, $0
+	MOVW x_hi+0(FP), R0
+	MOVW x_lo+4(FP), R1
 	MOVW	$0, R0
 	MOVW	(R0), R1 // crash
 	RET

@@ -8187,7 +8187,7 @@ func (e *ssafn) Log() bool {
 // Fatalf reports a compiler error and exits.
 func (e *ssafn) Fatalf(pos src.XPos, msg string, args ...interface{}) {
 	base.Pos = pos
-	nargs := append([]interface{}{ir.FuncName(e.curfn)}, args...)
+	nargs := append([]interface{}{ir.PkgFuncName(e.curfn)}, args...)
 	base.Fatalf("'%s': "+msg, nargs...)
 }
 

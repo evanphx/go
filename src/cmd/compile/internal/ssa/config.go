@@ -356,7 +356,7 @@ func NewConfig(arch string, types Types, ctxt *obj.Link, optimize, softfloat boo
 		c.RegSize = 4
 		c.lowerBlock = rewriteBlockWasm32
 		c.lowerValue = rewriteValueWasm32
-		c.registers = registersWasm[:]
+		c.registers = registersWasm32[:]
 		c.gpRegMask = gpRegMaskWasm32
 		c.fpRegMask = fpRegMaskWasm32
 		c.fp32RegMask = fp32RegMaskWasm32
@@ -366,7 +366,7 @@ func NewConfig(arch string, types Types, ctxt *obj.Link, optimize, softfloat boo
 		c.hasGReg = true
 		c.noDuffDevice = true
 		c.useAvg = false
-		c.useHmul = true
+		c.useHmul = false
 	default:
 		ctxt.Diag("arch %s not implemented", arch)
 	}

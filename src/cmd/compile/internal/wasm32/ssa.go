@@ -89,7 +89,7 @@ import (
 
    Callsite:
     - write arguments to the Go stack (starting at SP+0)
-    - push return address to Go stack (8 bytes)
+    - push return address to Go stack (4 bytes)
     - write local SP to global SP
     - push 0 (type i32) to Wasm stack
     - issue Call
@@ -105,7 +105,7 @@ import (
     - at block 0
       - check for Go stack overflow, call morestack if needed
       - subtract frame size from SP
-      - note that arguments now start at SP+framesize+8
+      - note that arguments now start at SP+framesize+4
 
    Normal epilogue:
     - pop frame from Go stack
@@ -119,7 +119,7 @@ import (
 
    The main loop that executes goroutines is wasm_pc_f_loop, in
    runtime/rt0_js_wasm.s. It grabs the saved return address from
-   the top of the Go stack (actually SP-8?), splits it up into F
+   the top of the Go stack (actually SP-4?), splits it up into F
    and B parts, then calls F with its Wasm argument set to B.
 
    Note that when resuming a goroutine, only the most recent function
@@ -325,38 +325,286 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 		p := s.Prog(storeOp(v.Type))
 		ssagen.AddrAuto(&p.To, v)
 
-	case ssa.OpWasm32LoweredAdd32withcarry:
+	case ssa.OpWasm32Mul64Decomp:
+		// compose x
 		getValue32(s, v.Args[0])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p := s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
 		getValue32(s, v.Args[1])
-		s.Prog(wasm32.AI32Add)
-		//getValue32(s, v.Args[2])
-		base.WarnfAt(v.Pos, "partial for add32withcarry")
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
 
-		setReg(s, v.Reg())
+		// compose y
+		getValue32(s, v.Args[2])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
 
-	case ssa.OpWasm32LoweredAdd32carry:
-		getValue32(s, v.Args[0])
-		getValue32(s, v.Args[1])
-		s.Prog(wasm32.AI32Add)
-		base.WarnfAt(v.Pos, "partial for add32carry")
+		getValue32(s, v.Args[3])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
 
+		s.Prog(wasm32.AI64Mul)
+
+		p = s.Prog(wasm32.ATee)
+		p.To = obj.Addr{
+			Type: obj.TYPE_REG,
+			Reg:  wasm32.REG_X0,
+		}
+
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64ShrS)
+		s.Prog(wasm32.AI32WrapI64)
 		setReg(s, v.Reg0())
-	case ssa.OpWasm32LoweredSub32withcarry:
+
+		getReg(s, wasm32.REG_X0)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg1())
+	case ssa.OpWasm32Div64Decomp:
+		// compose x
 		getValue32(s, v.Args[0])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p := s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
 		getValue32(s, v.Args[1])
-		s.Prog(wasm32.AI32Sub)
-		//getValue32(s, v.Args[2])
-		base.WarnfAt(v.Pos, "partial for sub32withcarry")
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
 
-		setReg(s, v.Reg())
+		// compose y
+		getValue32(s, v.Args[2])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
 
-	case ssa.OpWasm32LoweredSub32carry:
-		getValue32(s, v.Args[0])
-		getValue32(s, v.Args[1])
-		s.Prog(wasm32.AI32Sub)
-		base.WarnfAt(v.Pos, "partial for sub32carry")
+		getValue32(s, v.Args[3])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
 
+		s.Prog(wasm32.AI64DivS)
+
+		p = s.Prog(wasm32.ATee)
+		p.To = obj.Addr{
+			Type: obj.TYPE_REG,
+			Reg:  wasm32.REG_X0,
+		}
+
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64ShrS)
+		s.Prog(wasm32.AI32WrapI64)
 		setReg(s, v.Reg0())
+
+		getReg(s, wasm32.REG_X0)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg1())
+	case ssa.OpWasm32Div64uDecomp:
+		// compose x
+		getValue32(s, v.Args[0])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p := s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[1])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		// compose y
+		getValue32(s, v.Args[2])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[3])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		s.Prog(wasm32.AI64DivU)
+
+		p = s.Prog(wasm32.ATee)
+		p.To = obj.Addr{
+			Type: obj.TYPE_REG,
+			Reg:  wasm32.REG_X0,
+		}
+
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64ShrS)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg0())
+
+		getReg(s, wasm32.REG_X0)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg1())
+	case ssa.OpWasm32Mod64Decomp:
+		// compose x
+		getValue32(s, v.Args[0])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p := s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[1])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		// compose y
+		getValue32(s, v.Args[2])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[3])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		s.Prog(wasm32.AI64RemS)
+
+		p = s.Prog(wasm32.ATee)
+		p.To = obj.Addr{
+			Type: obj.TYPE_REG,
+			Reg:  wasm32.REG_X0,
+		}
+
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64ShrS)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg0())
+
+		getReg(s, wasm32.REG_X0)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg1())
+	case ssa.OpWasm32Mod64uDecomp:
+		// compose x
+		getValue32(s, v.Args[0])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p := s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[1])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		// compose y
+		getValue32(s, v.Args[2])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[3])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		s.Prog(wasm32.AI64RemU)
+
+		p = s.Prog(wasm32.ATee)
+		p.To = obj.Addr{
+			Type: obj.TYPE_REG,
+			Reg:  wasm32.REG_X0,
+		}
+
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64ShrS)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg0())
+
+		getReg(s, wasm32.REG_X0)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg1())
+	case ssa.OpWasm32Add64Decomp:
+		// compose x
+		getValue32(s, v.Args[0])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p := s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[1])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		// compose y
+		getValue32(s, v.Args[2])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[3])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		s.Prog(wasm32.AI64Add)
+
+		p = s.Prog(wasm32.ATee)
+		p.To = obj.Addr{
+			Type: obj.TYPE_REG,
+			Reg:  wasm32.REG_X0,
+		}
+
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64ShrS)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg0())
+
+		getReg(s, wasm32.REG_X0)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg1())
+	case ssa.OpWasm32Sub64Decomp:
+		// compose x
+		getValue32(s, v.Args[0])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p := s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[1])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		// compose y
+		getValue32(s, v.Args[2])
+		s.Prog(wasm32.AI64ExtendI32S)
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64Shl)
+
+		getValue32(s, v.Args[3])
+		s.Prog(wasm32.AI64ExtendI32U)
+		s.Prog(wasm32.AI64Or)
+
+		s.Prog(wasm32.AI64Sub)
+
+		p = s.Prog(wasm32.ATee)
+		p.To = obj.Addr{
+			Type: obj.TYPE_REG,
+			Reg:  wasm32.REG_X0,
+		}
+
+		p = s.Prog(wasm32.AI64Const)
+		p.From = obj.Addr{Type: obj.TYPE_CONST, Offset: 32}
+		s.Prog(wasm32.AI64ShrS)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg0())
+
+		getReg(s, wasm32.REG_X0)
+		s.Prog(wasm32.AI32WrapI64)
+		setReg(s, v.Reg1())
 	case ssa.OpClobber, ssa.OpClobberReg:
 		// TODO: implement for clobberdead experiment. Nop is ok for now.
 
@@ -389,6 +637,10 @@ func ssaGenValue(s *ssagen.State, v *ssa.Value) {
 				panic("bad news reg")
 			}
 
+			if v.Reg() == 16392 {
+				panic(fmt.Sprintf("%s had bad reg", v.Op))
+			}
+
 			setReg(s, v.Reg())
 		}
 	}
@@ -401,11 +653,11 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) bool {
 
 	case ssa.OpWasm32LoweredGetCallerPC:
 		p := s.Prog(wasm32.AI32Load)
-		// Caller PC is stored 8 bytes below first parameter.
+		// Caller PC is stored 4 bytes below first parameter.
 		p.From = obj.Addr{
 			Type:   obj.TYPE_MEM,
 			Name:   obj.NAME_PARAM,
-			Offset: -8,
+			Offset: -4,
 		}
 
 	case ssa.OpWasm32LoweredGetCallerSP:
@@ -440,28 +692,6 @@ func ssaGenValueOnStack(s *ssagen.State, v *ssa.Value, extend bool) bool {
 	case ssa.OpWasm32LoweredConvert:
 		getValue32(s, v.Args[0])
 
-	case ssa.OpWasm32LoweredMul32uhilo:
-		getValue32(s, v.Args[0])
-		getValue32(s, v.Args[1])
-		s.Prog(wasm32.AI32Mul)
-
-		p := s.Prog(wasm32.ASet)
-		p.To = obj.Addr{
-			Type:   obj.TYPE_REGREG,
-			Reg:    v.Reg0(),
-			Offset: int64(v.Reg1()),
-		}
-		return false
-	case ssa.OpWasm32LoweredHighMul:
-		getValue32(s, v.Args[0])
-		getValue32(s, v.Args[1])
-		s.Prog(wasm32.AI32Mul)
-		base.WarnfAt(v.Pos, "partial for loweredHighMul")
-	case ssa.OpWasm32LoweredHighMulU:
-		getValue32(s, v.Args[0])
-		getValue32(s, v.Args[1])
-		s.Prog(wasm32.AI32Mul)
-		base.WarnfAt(v.Pos, "partial for loweredHighMulU")
 	case ssa.OpWasm32Select:
 		getValue32(s, v.Args[0])
 		getValue32(s, v.Args[1])
@@ -705,6 +935,9 @@ func getReg(s *ssagen.State, reg int16) {
 func setReg(s *ssagen.State, reg int16) {
 	p := s.Prog(wasm32.ASet)
 	p.To = obj.Addr{Type: obj.TYPE_REG, Reg: reg}
+	if reg == 16392 {
+		panic("nope")
+	}
 }
 
 func loadOp(t *types.Type) obj.As {

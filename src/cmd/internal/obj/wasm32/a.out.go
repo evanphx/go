@@ -18,7 +18,7 @@ const (
  *	wasm
  */
 const (
-	AGet = obj.ABaseWasm + obj.A_ARCHSPECIFIC + iota
+	AGet = obj.ABaseWasm32 + obj.A_ARCHSPECIFIC + iota
 	ASet
 	ATee
 	ANot // alias for I32Eqz
@@ -266,7 +266,7 @@ const (
 
 const (
 	// globals
-	REG_SP = obj.RBaseWasm + iota
+	REG_SP = obj.RBaseWasm32 + iota
 	REG_CTXT
 	REG_g
 	// RET* are used by runtime.return0 and runtime.reflectcall. These functions pass return values in registers.
@@ -330,8 +330,6 @@ const (
 	REG_F30
 	REG_F31
 
-	REG_PC_B // also first parameter, i32
-
 	// i64 locals
 	REG_X0
 	REG_X1
@@ -343,12 +341,8 @@ const (
 	REG_X7
 	REG_X8
 	REG_X9
-	REG_X10
-	REG_X11
-	REG_X12
-	REG_X13
-	REG_X14
-	REG_X15
+
+	REG_PC_B // also first parameter, i32
 
 	MAXREG
 

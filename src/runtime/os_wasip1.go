@@ -11,6 +11,7 @@ import "unsafe"
 // GOARCH=wasm currently has 64 bits pointers, but the WebAssembly host expects
 // pointers to be 32 bits so we use this type alias to represent pointers in
 // structs and arrays passed as arguments to WASI functions.
+// GOARCH=wasm32 has 32 bit pointers but these values are still valid.
 //
 // Note that the use of an integer type prevents the compiler from tracking
 // pointers passed to WASI functions, so we must use KeepAlive to explicitly

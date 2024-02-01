@@ -51,7 +51,7 @@ TEXT runtime·gogo(SB), NOSPLIT, $0-8
 
 	// Put target PC at -8(SP), wasm_pc_f_loop will pick it up
 	Get SP
-	I32Const $8
+	I32Const $4
 	I32Sub
 	I32Load gobuf_pc(R0)
 	I32Store $0
@@ -108,7 +108,7 @@ TEXT runtime·mcall(SB), NOSPLIT, $0-8
 	CALL
 
 	Get SP
-	I32Const $8
+	I32Const $4
 	I32Add
 	Set SP
 
@@ -254,7 +254,7 @@ TEXT runtime·morestack(SB), NOSPLIT, $0-0
 	// Set g->sched to context in f.
 	NOP	SP	// tell vet SP changed - stop checking offsets
 	MOVW 0(SP), g_sched+gobuf_pc(g)
-	MOVW $8(SP), g_sched+gobuf_sp(g) // f's SP
+	MOVW $4(SP), g_sched+gobuf_sp(g) // f's SP
 	MOVW CTXT, g_sched+gobuf_ctxt(g)
 
 	// Cannot grow scheduler stack (m->g0).
@@ -277,8 +277,8 @@ TEXT runtime·morestack(SB), NOSPLIT, $0-0
 
 	// Called from f.
 	// Set m->morebuf to f's caller.
-	MOVW 8(SP), m_morebuf+gobuf_pc(R1)
-	MOVW $16(SP), m_morebuf+gobuf_sp(R1) // f's caller's SP
+	MOVW 4(SP), m_morebuf+gobuf_pc(R1)
+	MOVW $8(SP), m_morebuf+gobuf_sp(R1) // f's caller's SP
 	MOVW g, m_morebuf+gobuf_g(R1)
 
 	// Call newstack on m->g0's stack.
@@ -345,15 +345,15 @@ TEXT ·reflectcall(SB), NOSPLIT, $0-48
 #define CALLFN(NAME, MAXSIZE) \
 TEXT NAME(SB), WRAPPER, $MAXSIZE-48; \
 	NO_LOCAL_POINTERS; \
-	MOVW stackArgsSize+12(FP), R0; \
+	MOVW stackArgsSize+8(FP), R0; \
 	\
 	Get R0; \
 	I32Eqz; \
 	Not; \
 	If; \
 		Get SP; \
-		I32Load stackArgs+8(FP); \
-		I32Load stackArgsSize+12(FP); \
+		I32Load stackArgs+4(FP); \
+		I32Load stackArgsSize+8(FP); \
 		MemoryCopy; \
 	End; \
 	\
@@ -362,12 +362,12 @@ TEXT NAME(SB), WRAPPER, $MAXSIZE-48; \
 	I32Load $0; \
 	CALL; \
 	\
-	I32Load stackRetOffset+14(FP); \
+	I32Load stackRetOffset+10(FP); \
 	Set R0; \
 	\
 	MOVW stackArgsType+0(FP), RET0; \
 	\
-	I32Load stackArgs+8(FP); \
+	I32Load stackArgs+4(FP); \
 	Get R0; \
 	I32Add; \
 	Set RET1; \
@@ -377,7 +377,7 @@ TEXT NAME(SB), WRAPPER, $MAXSIZE-48; \
 	I32Add; \
 	Set RET2; \
 	\
-	I32Load stackArgsSize+12(FP); \
+	I32Load stackArgsSize+8(FP); \
 	Get R0; \
 	I32Sub; \
 	Set RET3; \
@@ -525,7 +525,7 @@ TEXT wasm_pc_f_loop(SB),NOSPLIT,$0
 	If
 	loop:
 		Loop
-			// Get PC_B & PC_F from -8(SP)
+			// Get PC_B & PC_F from -4(SP)
 			Get SP
 			I32Const $4
 			I32Sub
